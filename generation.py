@@ -1,18 +1,26 @@
-import random
 import numpy as np
-import tcod 
+import tcod
+import random
 from scipy.signal import convolve2d
 
-def cellular_automata_cave(map_obj, iterations=5, wall_char='#', floor_char='.', seed=None):
-    """Generate a cave map using cellular automata (4-5 rule)."""
-    if seed is not None:
-        np.random.seed(seed)
+def cellular_automata_cave(map_obj, iterations=5, wall_id=1, floor_id=0,
+                           seed=None, use_dual_rule=True, verbose=False):
+    """
+    Generate a cave map using cellular automata.
+    wall_id, floor_id : int (Tile IDs)
+    """
+    if seed is None:
+        seed = random.randint(0, 999999)
 
+    if verbose:
+        print(f"Generating cave: iterations={iterations}, seed={seed}")
+
+    rng = np.random.default_rng(seed)
     width, height = map_obj.width, map_obj.height
 
-    # Initial random grid (45% walls)
-    grid = np.random.rand(height, width)
-    grid = (grid <= 0.45).astype(np.uint8)  # 1 = wall, 0 = floor
+    # Initial random grid (48% walls for stricter rules)
+    grid = rng.random((height, width)) <= 0.48
+    grid = grid.astype(np.uint8)  # 1 = wall, 0 = floor
 
     # Set borders to walls
     grid[0, :] = 1
@@ -20,21 +28,26 @@ def cellular_automata_cave(map_obj, iterations=5, wall_char='#', floor_char='.',
     grid[:, 0] = 1
     grid[:, -1] = 1
 
-    # Kernel to count wall neighbours (excluding centre)
+    # Kernel to count neighbours (excluding centre)
     kernel = np.ones((3, 3), dtype=np.uint8)
     kernel[1, 1] = 0
 
-    for _ in range(iterations):
-        # Count walls in Moore neighbourhood
-        neighbour_count = convolve2d(grid, kernel, mode='same', boundary='fill', fillvalue=0)
+    for i in range(iterations):
+        neighbour_count = convolve2d(grid, kernel, mode='same',
+                                     boundary='fill', fillvalue=0)
 
-        # Apply rules: a wall becomes floor if <4 walls, floor becomes wall if ≥5 walls
         new_grid = grid.copy()
-        new_grid[(grid == 1) & (neighbour_count < 4)] = 0
-        new_grid[(grid == 0) & (neighbour_count >= 5)] = 1
-        grid = new_grid
+        if use_dual_rule and i < iterations // 2:
+            # First half: slightly strict rule (B5/S4)
+            new_grid[(grid == 1) & (neighbour_count < 4)] = 0
+            new_grid[(grid == 0) & (neighbour_count >= 5)] = 1
+        else:
+            # Second half: very strict rule (B5/S5)
+            new_grid[(grid == 1) & (neighbour_count < 5)] = 0
+            new_grid[(grid == 0) & (neighbour_count >= 5)] = 1
 
-        # Re‑enforce borders (they must remain walls)
+        grid = new_grid
+        # Reinforce borders
         grid[0, :] = 1
         grid[-1, :] = 1
         grid[:, 0] = 1
@@ -43,67 +56,73 @@ def cellular_automata_cave(map_obj, iterations=5, wall_char='#', floor_char='.',
     # Write final grid to map object
     for y in range(height):
         for x in range(width):
-            map_obj.set(x, y, wall_char if grid[y, x] else floor_char)
+            map_obj.set(x, y, wall_id if grid[y, x] else floor_id)
+    
+    return seed
 
 
-def perlin_noise_generation(map_obj, tile_chars, scale=10.0, octaves=4, persistence=0.5, seed=0):
-    """Generate terrain using Perlin noise (FBM implementation)."""
+def perlin_noise_generation(map_obj, tile_ids, scale=10.0, octaves=4,
+                            persistence=0.5, seed=None):
+    """
+    Generate terrain using Perlin noise (FBM).
+    """
+    if seed is None:
+        seed = random.randint(0, 999999)
+
     width, height = map_obj.width, map_obj.height
+    seed_val = int(seed) % (2**31 - 1)
 
-    # Create noise generator with Fractal Brownian Motion to use octaves
     noise = tcod.noise.Noise(
         dimensions=2,
         algorithm=tcod.noise.Algorithm.PERLIN,
-        implementation=tcod.noise.Implementation.FBM,   # was SIMPLE – now uses octaves
+        implementation=tcod.noise.Implementation.FBM,
         lacunarity=2.0,
         octaves=octaves,
-        hurst=persistence,   # persistence controls amplitude decay
-        seed=seed
+        hurst=persistence,   # persistence used as Hurst exponent
+        seed=seed_val
     )
 
-    # Sample noise over the whole map
     x_coords = np.arange(width, dtype=np.float32) / scale
     y_coords = np.arange(height, dtype=np.float32) / scale
-    samples = noise.sample_ogrid((x_coords, y_coords))  # returns shape (height, width)
+    samples = noise.sample_ogrid((x_coords, y_coords))
 
-    # Normalize to [0, 1]
     min_val, max_val = samples.min(), samples.max()
-    samples = (samples - min_val) / (max_val - min_val + 1e-8)   # avoid division by zero
+    if max_val > min_val:
+        samples = (samples - min_val) / (max_val - min_val)
+    else:
+        samples = np.zeros_like(samples)
 
-    # Map noise values to tile characters
     for y in range(height):
         for x in range(width):
-            idx = int(samples[y, x] * len(tile_chars))
-            idx = min(idx, len(tile_chars) - 1)
-            map_obj.set(x, y, tile_chars[idx])
+            idx = int(samples[y, x] * len(tile_ids))
+            idx = min(idx, len(tile_ids) - 1)
+            map_obj.set(x, y, tile_ids[idx])
+    
+    return seed
 
 
-def voronoi_generation(map_obj, tile_chars, num_points=20, seed=None):
-    """Generate a Voronoi diagram and colour each region with a random tile character."""
-    if seed is not None:
-        np.random.seed(seed)
+def voronoi_generation(map_obj, tile_ids, num_points=20, seed=None):
+    """
+    Generate a Voronoi diagram, assigning a random tile to each region.
+    """
+    if seed is None:
+        seed = random.randint(0, 999999)
 
+    rng = np.random.default_rng(seed)
     width, height = map_obj.width, map_obj.height
 
-    # Randomly place seed points
-    points_x = np.random.randint(0, width, size=num_points)
-    points_y = np.random.randint(0, height, size=num_points)
+    points_x = rng.integers(0, width, size=num_points)
+    points_y = rng.integers(0, height, size=num_points)
 
-    # Create a grid of coordinates
-    xv, yv = np.meshgrid(np.arange(width), np.arange(height))  # both shape (height, width)
+    xv, yv = np.meshgrid(np.arange(width), np.arange(height))
+    distances = (xv[..., np.newaxis] - points_x) ** 2 + \
+                (yv[..., np.newaxis] - points_y) ** 2
+    region_indices = np.argmin(distances, axis=-1)
 
-    # Compute squared distance to every seed point for all cells
-    # Shape of distances: (height, width, num_points)
-    distances = (xv[..., np.newaxis] - points_x) ** 2 + (yv[..., np.newaxis] - points_y) ** 2
+    point_ids = rng.choice(tile_ids, size=num_points)
 
-    # For each cell, find the index of the closest seed point
-    region_indices = np.argmin(distances, axis=-1)   # shape (height, width)
-
-    # Assign a random tile character to each Voronoi region
-    point_chars = np.random.choice(tile_chars, size=num_points)
-
-    # Write to map
     for y in range(height):
         for x in range(width):
-            region = region_indices[y, x]
-            map_obj.set(x, y, point_chars[region])
+            map_obj.set(x, y, point_ids[region_indices[y, x]])
+    
+    return seed

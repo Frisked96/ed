@@ -1,0 +1,94 @@
+[
+  {
+    "id": 1,
+    "char": ".",
+    "name": "Floor",
+    "color": [
+      255,
+      255,
+      255
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 2,
+    "char": "#",
+    "name": "Wall",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 3,
+    "char": "~",
+    "name": "Water",
+    "color": [
+      0,
+      0,
+      255
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {
+      "liquid": true
+    },
+    "animation": null
+  },
+  {
+    "id": 4,
+    "char": "T",
+    "name": "Tree",
+    "color": [
+      0,
+      255,
+      0
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 5,
+    "char": "G",
+    "name": "Grass",
+    "color": [
+      0,
+      200,
+      0
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 6,
+    "char": "A",
+    "name": "Custom",
+    "color": [
+      0,
+      0,
+      255
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  }
+]

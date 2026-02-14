@@ -3,7 +3,15 @@ import sys
 import random
 from utils import get_distance, rotate_selection_90, flip_selection_horizontal, flip_selection_vertical, shift_map, get_user_input, get_user_confirmation
 from drawing import place_tile_at, flood_fill, draw_line, draw_rectangle, draw_circle, draw_pattern_rectangle
-from menus import menu_save_map, menu_load_map, menu_macros, menu_define_autotiling, menu_autosave_settings, menu_editor_pause, menu_define_pattern, menu_define_brush, menu_pick_tile, menu_new_map, menu_resize_map, menu_set_seed, menu_statistics, menu_controls, menu_random_generation, menu_perlin_generation, menu_voronoi_generation, menu_define_tiles
+from menus import (
+    menu_save_map, menu_load_map, menu_macros, menu_define_autotiling,
+    menu_autosave_settings, menu_editor_pause, menu_define_pattern,
+    menu_define_brush, menu_pick_tile, menu_new_map, menu_resize_map,
+    menu_set_seed, menu_statistics, menu_controls, menu_random_generation,
+    menu_perlin_generation, menu_voronoi_generation, menu_define_tiles,
+    menu_export_image, build_key_map
+)
+from ui import init_color_pairs, draw_help_overlay
 from core import Map
 
 def handle_quit(session, stdscr, action=None):
@@ -62,7 +70,6 @@ def handle_move_cursor(session, stdscr, action=None):
 def handle_place_tile(session, stdscr, action=None):
     ts = session.tool_state
     if ts.mode == 'place':
-        # Only push undo if the tile actually changes
         old_val = session.map_obj.get(session.cursor_x, session.cursor_y)
         if old_val != session.selected_char:
             session.map_obj.push_undo()
@@ -155,13 +162,11 @@ def handle_tile_management(session, stdscr, action=None):
         session.selected_idx = (session.selected_idx + 1) % len(session.tile_chars)
         session.selected_char = session.tile_chars[session.selected_idx]
     elif action == 'pick_tile':
-        from ui import init_color_pairs
         picked = menu_pick_tile(stdscr, session.tile_chars, session.tile_colors, session.color_pairs)
         if picked:
             session.selected_char = picked
             session.selected_idx = session.tile_chars.index(picked)
     elif action == 'define_tiles':
-        from ui import init_color_pairs
         menu_define_tiles(stdscr, session.tile_chars, session.tile_colors)
         session.color_pairs = init_color_pairs(session.tile_colors)
         session.selected_idx = min(session.selected_idx, len(session.tile_chars) - 1)
@@ -184,6 +189,106 @@ def handle_replace_all(session, stdscr, action=None):
             stdscr.getch()
             stdscr.timeout(1000)
 
+def handle_brush_size(session, stdscr, action=None):
+    if action == 'increase_brush':
+        session.tool_state.brush_size = min(session.tool_state.brush_size + 1, 10)
+    elif action == 'decrease_brush':
+        session.tool_state.brush_size = max(session.tool_state.brush_size - 1, 1)
+
+def handle_measurement(session, stdscr, action=None):
+    if session.tool_state.measure_start is None:
+        session.tool_state.measure_start = (session.cursor_x, session.cursor_y)
+    else:
+        session.tool_state.measure_start = None
+
+def handle_tool_select(session, stdscr, action=None):
+    ts = session.tool_state
+    ts.mode = action.split('_')[0]
+    ts.start_point = None
+    if action == 'pattern_tool' and ts.pattern is None:
+        ts.pattern = menu_define_pattern(stdscr, session.tile_chars, session.tile_colors)
+
+def handle_define_pattern(session, stdscr, action=None):
+    session.tool_state.pattern = menu_define_pattern(stdscr, session.tile_chars, session.tile_colors)
+
+def handle_define_brush(session, stdscr, action=None):
+    session.tool_state.brush_shape = menu_define_brush(stdscr)
+
+def handle_toggle_snap(session, stdscr, action=None):
+    inp = get_user_input(stdscr, session.status_y + 2, 0, "Enter snap size: ")
+    try:
+        session.tool_state.snap_size = int(inp or "1")
+    except: pass
+
+def handle_toggle_palette(session, stdscr, action=None):
+    session.tool_state.show_palette = not session.tool_state.show_palette
+
+def handle_toggle_autotile(session, stdscr, action=None):
+    if session.tool_state.auto_tiling:
+        session.tool_state.auto_tiling = False
+    elif session.selected_char in session.tool_state.tiling_rules:
+        session.tool_state.auto_tiling = True
+    else:
+        stdscr.addstr(session.status_y + 2, 0, f"No rules for '{session.selected_char}'!")
+        stdscr.getch()
+
+def handle_resize_map(session, stdscr, action=None):
+    res = menu_resize_map(stdscr, session.map_obj, session.view_width, session.view_height)
+    if res:
+        session.map_obj = res
+        session.map_obj.undo_stack = session.undo_stack
+
+def handle_set_seed(session, stdscr, action=None):
+    session.tool_state.seed = menu_set_seed(stdscr, session.tool_state.seed)
+    random.seed(session.tool_state.seed)
+
+def handle_statistics(session, stdscr, action=None):
+    menu_statistics(stdscr, session.map_obj)
+
+def handle_show_help(session, stdscr, action=None):
+    draw_help_overlay(stdscr, session.bindings)
+
+def handle_edit_controls(session, stdscr, action=None):
+    menu_controls(stdscr, session.bindings)
+    session.key_map = build_key_map(session.bindings)
+
+def handle_file_ops(session, stdscr, action=None):
+    if action == 'save_map':
+        if menu_save_map(stdscr, session.map_obj):
+            session.map_obj.dirty = False
+    elif action == 'load_map':
+        loaded = menu_load_map(stdscr, session.view_width, session.view_height)
+        if loaded:
+            session.map_obj.push_undo()
+            session.map_obj = loaded
+            session.camera_x, session.camera_y = 0, 0
+            session.cursor_x, session.cursor_y = 0, 0
+    elif action == 'new_map':
+        new_m = menu_new_map(stdscr, session.view_width, session.view_height)
+        if new_m:
+             session.map_obj = new_m
+             session.map_obj.undo_stack = session.undo_stack
+             session.camera_x, session.camera_y = 0, 0
+             session.cursor_x, session.cursor_y = 0, 0
+    elif action == 'export_image':
+        menu_export_image(stdscr, session.map_obj, session.tile_colors)
+
+def handle_macro_toggle(session, stdscr, action=None):
+    ts = session.tool_state
+    if ts.recording:
+        ts.recording = False
+        name = get_user_input(stdscr, session.status_y + 2, 0, "Enter name for macro: ")
+        if name: ts.macros[name] = list(ts.current_macro_actions)
+    else:
+        ts.recording = True
+        ts.current_macro_actions = []
+
+def handle_macro_play(session, stdscr, action=None):
+    ts = session.tool_state
+    name = get_user_input(stdscr, session.status_y + 2, 0, "Enter macro name to play: ")
+    if name in ts.macros:
+        session.action_queue.extendleft(reversed(ts.macros[name]))
+
 def get_action_dispatcher():
     return {
         'quit': handle_quit,
@@ -204,4 +309,18 @@ def get_action_dispatcher():
         'random_gen': handle_generation, 'perlin_noise': handle_generation, 'voronoi': handle_generation,
         'cycle_tile': handle_tile_management, 'pick_tile': handle_tile_management, 'define_tiles': handle_tile_management,
         'replace_all': handle_replace_all,
+        'increase_brush': handle_brush_size, 'decrease_brush': handle_brush_size,
+        'set_measure': handle_measurement,
+        'line_tool': handle_tool_select, 'rect_tool': handle_tool_select,
+        'circle_tool': handle_tool_select, 'pattern_tool': handle_tool_select,
+        'define_pattern': handle_define_pattern, 'define_brush': handle_define_brush,
+        'toggle_snap': handle_toggle_snap, 'toggle_palette': handle_toggle_palette,
+        'toggle_autotile': handle_toggle_autotile,
+        'resize_map': handle_resize_map, 'set_seed': handle_set_seed,
+        'statistics': handle_statistics, 'show_help': handle_show_help,
+        'edit_controls': handle_edit_controls,
+        'save_map': handle_file_ops, 'load_map': handle_file_ops,
+        'new_map': handle_file_ops, 'export_image': handle_file_ops,
+        'macro_record_toggle': handle_macro_toggle,
+        'macro_play': handle_macro_play,
     }

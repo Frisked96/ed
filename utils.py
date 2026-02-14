@@ -56,7 +56,6 @@ def get_user_input(stdscr, y, x, prompt, echo=True):
         stdscr.clrtoeol()
         stdscr.refresh()
     
-    old_timeout = 1000 # Default for editor
     stdscr.timeout(-1)
     curses.flushinp()
     if echo:
@@ -82,6 +81,6 @@ def get_user_confirmation(stdscr, y, x, prompt):
     
     stdscr.timeout(-1)
     key = stdscr.getch()
-    stdscr.timeout(1000) # Restore editor default
+    # Timeout will be restored by the main loop in next iteration
     
     return key in (ord('y'), ord('Y'))

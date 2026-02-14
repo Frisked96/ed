@@ -64,23 +64,28 @@ def draw_status(stdscr, y, map_width, map_height, camera_x, camera_y,
                 cursor_x, cursor_y, selected_char, tool_state, undo_stack, bindings):
     max_y, max_x = stdscr.getmaxyx()
 
-    status1 = f'Map:{map_width}x{map_height} Cam:({camera_x},{camera_y}) Cursor:({cursor_x},{cursor_y}) Tool:{tool_state.mode}'
-    if tool_state.brush_size > 1:
-        status1 += f' Brush:{tool_state.brush_size}'
-    status1 += f' Seed:{tool_state.seed}'
-    if tool_state.snap_size > 1:
-        status1 += f' Snap:{tool_state.snap_size}'
-    if tool_state.auto_tiling:
-        status1 += f' AutoTile:On'
+    status1 = f'Cursor:({cursor_x},{cursor_y}) '
     if tool_state.measure_start:
         dist = get_distance(tool_state.measure_start, (cursor_x, cursor_y))
-        status1 += f' Dist:{dist:.1f}'
+        status1 += f'Dist:{dist:.1f} '
+    
+    status1 += f'Tool:{tool_state.mode}'
+    if tool_state.brush_size > 1:
+        status1 += f' Br:{tool_state.brush_size}'
+    if tool_state.snap_size > 1:
+        status1 += f' Sn:{tool_state.snap_size}'
+    if tool_state.auto_tiling:
+        status1 += f' AT:On'
+    
     stdscr.addstr(y, 0, status1[:max_x-1])
+
+    status2 = f'Map:{map_width}x{map_height} Cam:({camera_x},{camera_y}) Seed:{tool_state.seed} Tile:{selected_char}'
+    stdscr.addstr(y+1, 0, status2[:max_x-1])
 
     undo_str = f'Undo:{len(undo_stack.undo_stack)}' if undo_stack.can_undo() else ''
     redo_str = f'Redo:{len(undo_stack.redo_stack)}' if undo_stack.can_redo() else ''
-    status2 = f'Tile:{selected_char} {undo_str} {redo_str} [{get_key_name(bindings["show_help"])}]=Help [{get_key_name(bindings["quit"])}]=Quit'
-    stdscr.addstr(y+1, 0, status2[:max_x-1])
+    status3 = f'{undo_str} {redo_str} [{get_key_name(bindings["show_help"])}]=Help [{get_key_name(bindings["quit"])}]=Quit'
+    stdscr.addstr(y+2, 0, status3[:max_x-1])
 
 
 _help_cache = {
@@ -137,7 +142,7 @@ def draw_help_overlay(stdscr, bindings):
                 f"Macros record action names. Use the Macro Manager in the menu to define/edit."
             ]),
             ("MEASUREMENT & SNAPPING", [
-                f"{get_key_name(bindings['toggle_snap'])}=Set Grid Snap Size | {get_key_name(bindings['set_measure'])}=Set/Clear Measurement Start",
+                f"{get_key_name(bindings['toggle_snap'])}=Set Grid Snap Size | {get_key_name(bindings['set_measure'])}=Set Measurement Start (ESC to clear)",
                 f"Distance is shown in the status bar from the measurement start to the cursor."
             ]),
             ("AUTO-TILING", [

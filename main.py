@@ -82,6 +82,7 @@ def editor(stdscr, map_obj, view_width, view_height, tile_chars, tile_colors, bi
         if key == 27:
             if ts.start_point: ts.start_point = None
             elif session.selection_start: session.selection_start, session.selection_end = None, None
+            elif ts.measure_start: ts.measure_start = None
             else: ts.mode = 'place'
             continue
 

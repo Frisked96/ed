@@ -1,6 +1,6 @@
 import random
 import numpy as np
-
+import tcod 
 from scipy.signal import convolve2d
 
 def cellular_automata_cave(map_obj, iterations=5, wall_char='#', floor_char='.', seed=None):

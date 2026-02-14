@@ -196,10 +196,7 @@ def handle_brush_size(session, stdscr, action=None):
         session.tool_state.brush_size = max(session.tool_state.brush_size - 1, 1)
 
 def handle_measurement(session, stdscr, action=None):
-    if session.tool_state.measure_start is None:
-        session.tool_state.measure_start = (session.cursor_x, session.cursor_y)
-    else:
-        session.tool_state.measure_start = None
+    session.tool_state.measure_start = (session.cursor_x, session.cursor_y)
 
 def handle_tool_select(session, stdscr, action=None):
     ts = session.tool_state

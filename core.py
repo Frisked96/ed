@@ -1,6 +1,7 @@
 import curses
 import time
 import random
+import numpy as np
 from collections import deque
 
 DEFAULT_VIEW_WIDTH = 60
@@ -25,33 +26,36 @@ class Map:
         self.height = height
         self.undo_stack = undo_stack
         self.dirty = False
-        if data:
-            self.data = data
+        if data is not None:
+            if isinstance(data, np.ndarray):
+                self.data = data.copy()
+            else:
+                self.data = np.array(data, dtype='U1')
         else:
-            self.data = [[fill_char for _ in range(width)] for _ in range(height)]
+            self.data = np.full((height, width), fill_char, dtype='U1')
 
     def is_inside(self, x, y):
         return 0 <= x < self.width and 0 <= y < self.height
 
     def get(self, x, y):
-        if self.is_inside(x, y):
-            return self.data[y][x]
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.data[y, x]
         return None
 
     def set(self, x, y, char):
-        if self.is_inside(x, y):
-            if self.data[y][x] != char:
-                self.data[y][x] = char
+        if 0 <= x < self.width and 0 <= y < self.height:
+            if self.data[y, x] != char:
+                self.data[y, x] = char
                 self.dirty = True
                 return True
         return False
 
     def push_undo(self):
         if self.undo_stack:
-            self.undo_stack.push(self.copy_data())
+            self.undo_stack.push(self.data.copy())
 
     def copy_data(self):
-        return [row[:] for row in self.data]
+        return self.data.copy()
 
     def __iter__(self):
         return iter(self.data)
@@ -64,18 +68,18 @@ class UndoStack:
         self.undo_stack = deque(maxlen=max_size)
         self.redo_stack = deque(maxlen=max_size)
 
-    def push(self, map_data):
-        self.undo_stack.append([row[:] for row in map_data])
+    def push(self, map_data_copy):
+        self.undo_stack.append(map_data_copy)
         self.redo_stack.clear()
 
-    def undo(self, current_map):
+    def undo(self, current_map_copy):
         if not self.undo_stack: return None
-        self.redo_stack.append([row[:] for row in current_map])
+        self.redo_stack.append(current_map_copy)
         return self.undo_stack.pop()
 
-    def redo(self, current_map):
+    def redo(self, current_map_copy):
         if not self.redo_stack: return None
-        self.undo_stack.append([row[:] for row in current_map])
+        self.undo_stack.append(current_map_copy)
         return self.redo_stack.pop()
 
     def can_undo(self): return len(self.undo_stack) > 0

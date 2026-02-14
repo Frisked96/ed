@@ -11,7 +11,7 @@ from menus import (
     menu_perlin_generation, menu_voronoi_generation, menu_define_tiles,
     menu_export_image, build_key_map
 )
-from ui import init_color_pairs, draw_help_overlay
+from ui import init_color_pairs, draw_help_overlay, invalidate_cache
 from core import Map
 
 def handle_quit(session, stdscr, action=None):
@@ -30,8 +30,10 @@ def handle_editor_menu(session, stdscr, action=None):
         if loaded:
             session.map_obj.push_undo()
             session.map_obj = loaded
+            session.map_obj.dirty = False
             session.camera_x, session.camera_y = 0, 0
             session.cursor_x, session.cursor_y = 0, 0
+            invalidate_cache()
     elif choice == "Macro Manager":
         menu_macros(stdscr, session.tool_state)
     elif choice == "Auto-Tiling Manager":
@@ -103,10 +105,11 @@ def handle_flood_fill(session, stdscr, action=None):
 
 def handle_undo_redo(session, stdscr, action=None):
     res = session.undo_stack.undo(session.map_obj.copy_data()) if action == 'undo' else session.undo_stack.redo(session.map_obj.copy_data())
-    if res:
+    if res is not None:
         session.map_obj.data = res
         session.map_obj.dirty = True
         session.selection_start = session.selection_end = None
+        invalidate_cache()
 
 def handle_selection(session, stdscr, action=None):
     if action == 'select_start':
@@ -148,6 +151,7 @@ def handle_map_transform(session, stdscr, action=None):
         elif 'left' in action: dx = -1
         elif 'right' in action: dx = 1
         session.map_obj.data = shift_map(session.map_obj.data, dx, dy)
+    invalidate_cache()
 
 def handle_generation(session, stdscr, action=None):
     session.map_obj.push_undo()
@@ -155,7 +159,9 @@ def handle_generation(session, stdscr, action=None):
     if action == 'random_gen': success = menu_random_generation(stdscr, session.map_obj, session.tool_state.seed)
     elif action == 'perlin_noise': success = menu_perlin_generation(stdscr, session.map_obj, session.tile_chars, session.tool_state.seed)
     elif action == 'voronoi': success = menu_voronoi_generation(stdscr, session.map_obj, session.tile_chars, session.tool_state.seed)
-    if success: session.tool_state.edits_since_save += 1
+    if success: 
+        session.tool_state.edits_since_save += 1
+        invalidate_cache()
 
 def handle_tile_management(session, stdscr, action=None):
     if action == 'cycle_tile':
@@ -184,6 +190,7 @@ def handle_replace_all(session, stdscr, action=None):
                     if session.map_obj.get(x, y) == old_c:
                         session.map_obj.set(x, y, new_c)
                         cnt += 1
+            invalidate_cache()
             stdscr.addstr(session.status_y + 2, 0, f"Replaced {cnt}. Press key...")
             stdscr.timeout(-1)
             stdscr.getch()
@@ -231,9 +238,10 @@ def handle_toggle_autotile(session, stdscr, action=None):
 
 def handle_resize_map(session, stdscr, action=None):
     res = menu_resize_map(stdscr, session.map_obj, session.view_width, session.view_height)
-    if res:
+    if res is not None:
         session.map_obj = res
         session.map_obj.undo_stack = session.undo_stack
+        invalidate_cache()
 
 def handle_set_seed(session, stdscr, action=None):
     session.tool_state.seed = menu_set_seed(stdscr, session.tool_state.seed)
@@ -258,15 +266,19 @@ def handle_file_ops(session, stdscr, action=None):
         if loaded:
             session.map_obj.push_undo()
             session.map_obj = loaded
+            session.map_obj.dirty = False
             session.camera_x, session.camera_y = 0, 0
             session.cursor_x, session.cursor_y = 0, 0
+            invalidate_cache()
     elif action == 'new_map':
         new_m = menu_new_map(stdscr, session.view_width, session.view_height)
         if new_m:
              session.map_obj = new_m
              session.map_obj.undo_stack = session.undo_stack
+             session.map_obj.dirty = False
              session.camera_x, session.camera_y = 0, 0
              session.cursor_x, session.cursor_y = 0, 0
+             invalidate_cache()
     elif action == 'export_image':
         menu_export_image(stdscr, session.map_obj, session.tile_colors)
 

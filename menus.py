@@ -1,9 +1,12 @@
+from collections import Counter
 import curses
 import os
 import random
+import numpy as np
 from utils import get_key_name, parse_color_name, get_user_input
 from core import COLOR_MAP
 from map_io import save_config, export_to_image
+from ui import invalidate_cache
 from generation import cellular_automata_cave, perlin_noise_generation, voronoi_generation
 
 def build_key_map(bindings):
@@ -15,12 +18,7 @@ def build_key_map(bindings):
     return key_map
 
 def get_map_statistics(map_obj):
-    tile_counts = {}
-    for y in range(map_obj.height):
-        for x in range(map_obj.width):
-            ch = map_obj.get(x, y)
-            tile_counts[ch] = tile_counts.get(ch, 0) + 1
-    return tile_counts
+    return Counter(map_obj.data.flatten())
 
 def menu_controls(stdscr, bindings):
     curses.curs_set(0)
@@ -215,7 +213,7 @@ def menu_save_map(stdscr, map_obj):
     if filename:
         try:
             with open(filename, 'w') as f:
-                for row in map_obj:
+                for row in map_obj.data:
                     f.write(''.join(row) + '\n')
             stdscr.addstr(max_y-1, 0, f"Saved to {filename}. Press any key...")
             success = True
@@ -224,6 +222,7 @@ def menu_save_map(stdscr, map_obj):
         stdscr.clrtoeol()
         stdscr.refresh()
         stdscr.getch()
+        invalidate_cache()
 
     return success
 
@@ -254,6 +253,7 @@ def menu_load_map(stdscr, view_width, view_height):
             for x, ch in enumerate(line):
                 map_obj.set(x, y, ch)
 
+        map_obj.dirty = False
         return map_obj
     except:
         return None
@@ -278,7 +278,7 @@ def menu_export_image(stdscr, map_obj, tile_colors):
         elif filename.endswith('.csv'):
             try:
                 with open(filename, 'w') as f:
-                    for row in map_obj:
+                    for row in map_obj.data:
                         f.write(','.join(row) + '\n')
                 stdscr.addstr(max_y-1, 0, f"Exported CSV to {filename}. Press any key...")
             except Exception as e:
@@ -287,6 +287,7 @@ def menu_export_image(stdscr, map_obj, tile_colors):
         stdscr.clrtoeol()
         stdscr.refresh()
         stdscr.getch()
+        invalidate_cache()
 
 
 def menu_new_map(stdscr, view_width, view_height):
@@ -338,6 +339,7 @@ def menu_new_map(stdscr, view_width, view_height):
         for y in range(h):
             map_obj.set(0, y, border_char)
             map_obj.set(w-1, y, border_char)
+        map_obj.dirty = False
 
     return map_obj
 
@@ -540,16 +542,12 @@ def menu_resize_map(stdscr, map_obj, view_width, view_height):
     if w == map_obj.width and h == map_obj.height:
         return None
 
-    new_map = Map(w, h)
-    # Fill with default
-    for y in range(h):
-        for x in range(w):
-            new_map.set(x, y, fill_char)
-            
-    # Copy old
-    for y in range(min(h, map_obj.height)):
-        for x in range(min(w, map_obj.width)):
-            new_map.set(x, y, map_obj.get(x, y))
+    new_map = Map(w, h, fill_char=fill_char)
+    
+    # Copy old content into the top-left of the new map using numpy slicing
+    copy_h = min(h, map_obj.height)
+    copy_w = min(w, map_obj.width)
+    new_map.data[:copy_h, :copy_w] = map_obj.data[:copy_h, :copy_w]
 
     return new_map
 

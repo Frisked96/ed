@@ -7,11 +7,12 @@ import shutil
 from core import Map, ToolState, EditorSession, DEFAULT_TILE_COLORS
 from utils import parse_color_name
 from map_io import load_config
-from ui import init_color_pairs, draw_map, draw_status, draw_tile_palette
+from ui import init_color_pairs, draw_map, draw_status, draw_tile_palette, invalidate_cache
 from menus import build_key_map, menu_save_map, menu_load_map, menu_new_map
 from actions import get_action_dispatcher
 
 def editor(stdscr, map_obj, view_width, view_height, tile_chars, tile_colors, bindings, macros=None, tiling_rules=None):
+    invalidate_cache()
     session = EditorSession(map_obj, view_width, view_height, tile_chars, tile_colors, bindings, macros, tiling_rules)
     session.color_pairs = init_color_pairs(tile_colors)
     session.map_obj.undo_stack = session.undo_stack
@@ -30,9 +31,11 @@ def editor(stdscr, map_obj, view_width, view_height, tile_chars, tile_colors, bi
             session.camera_x = max(0, min(session.camera_x, session.map_obj.width - session.view_width))
             session.camera_y = max(0, min(session.camera_y, session.map_obj.height - session.view_height))
             stdscr.clear()
+            # Invalidate UI cache by forcing re-init
+            import ui
+            ui._screen_cache_char = None
             stdscr.refresh()
 
-        stdscr.clear()
         session.status_y = draw_map(stdscr, session.map_obj.data, session.camera_x, session.camera_y, session.view_width, session.view_height,
                                    session.cursor_x, session.cursor_y, session.selected_char, session.color_pairs,
                                    session.selection_start, session.selection_end, session.tool_state)
@@ -144,6 +147,7 @@ def menu_main(stdscr):
                     map_obj = Map(rw, rh)
                     for y, line in enumerate(lines):
                         for x, ch in enumerate(line): map_obj.set(x, y, ch)
+                    map_obj.dirty = False
                     editor(stdscr, map_obj, view_width, view_height, tile_chars, tile_colors, bindings, macros, tiling_rules)
             except: pass
         elif key == ord('3'):

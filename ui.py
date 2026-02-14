@@ -1,6 +1,15 @@
 import curses
 import textwrap
+import numpy as np
 from utils import get_key_name, get_distance
+
+_screen_cache_char = None
+_screen_cache_attr = None
+
+def invalidate_cache():
+    global _screen_cache_char, _screen_cache_attr
+    _screen_cache_char = None
+    _screen_cache_attr = None
 
 def init_color_pairs(tile_colors):
     curses.start_color()
@@ -18,45 +27,70 @@ def init_color_pairs(tile_colors):
 def draw_map(stdscr, map_data, camera_x, camera_y, view_width, view_height,
              cursor_x, cursor_y, selected_char, color_pairs,
              selection_start=None, selection_end=None, tool_state=None):
+    global _screen_cache_char, _screen_cache_attr
     max_y, max_x = stdscr.getmaxyx()
     view_width = min(view_width, max_x)
     view_height = min(view_height, max_y - 3)
 
-    sel_coords = set()
+    if (_screen_cache_char is None or _screen_cache_char.shape != (view_height, view_width)):
+        _screen_cache_char = np.zeros((view_height, view_width), dtype='U1')
+        _screen_cache_attr = np.zeros((view_height, view_width), dtype=np.int32)
+        stdscr.erase()
+
+    sel_x0 = sel_y0 = sel_x1 = sel_y1 = -1
     if selection_start and selection_end:
         x0, y0 = selection_start
         x1, y1 = selection_end
-        for y in range(min(y0, y1), max(y0, y1) + 1):
-            for x in range(min(x0, x1), max(x0, x1) + 1):
-                sel_coords.add((x, y))
+        sel_x0, sel_x1 = (x0, x1) if x0 < x1 else (x1, x0)
+        sel_y0, sel_y1 = (y0, y1) if y0 < y1 else (y1, y0)
+
+    sp_x = sp_y = -1
+    if tool_state and tool_state.start_point:
+        sp_x, sp_y = tool_state.start_point
+
+    ms_x = ms_y = -1
+    if tool_state and tool_state.measure_start:
+        ms_x, ms_y = tool_state.measure_start
+
+    map_h, map_w = map_data.shape
 
     for vy in range(view_height):
         my = camera_y + vy
-        if my < 0 or my >= len(map_data): continue
+        if my < 0 or my >= map_h:
+            for vx in range(view_width):
+                if _screen_cache_char[vy, vx] != ' ' or _screen_cache_attr[vy, vx] != 0:
+                    try:
+                        stdscr.addch(vy, vx, ' ', 0)
+                        _screen_cache_char[vy, vx] = ' '
+                        _screen_cache_attr[vy, vx] = 0
+                    except: pass
+            continue
+
         for vx in range(view_width):
             mx = camera_x + vx
-            if mx < 0 or mx >= len(map_data[0]): continue
+            if mx < 0 or mx >= map_w:
+                ch, attr = ' ', 0
+            else:
+                ch = map_data[my, mx]
+                pair = color_pairs.get(ch, 1)
+                attr = curses.color_pair(pair)
 
-            ch = map_data[my][mx]
-            pair = color_pairs.get(ch, 1)
-            attr = curses.color_pair(pair)
+                if sel_x0 <= mx <= sel_x1 and sel_y0 <= my <= sel_y1:
+                    attr = curses.color_pair(color_pairs.get('__SELECTION__', 1))
 
-            if (mx, my) in sel_coords:
-                attr = curses.color_pair(color_pairs.get('__SELECTION__', 1))
+                if my == cursor_y and mx == cursor_x:
+                    attr |= curses.A_REVERSE
 
-            if my == cursor_y and mx == cursor_x:
-                attr |= curses.A_REVERSE
+                if (mx == sp_x and my == sp_y) or (mx == ms_x and my == ms_y):
+                    attr |= curses.A_BOLD | curses.A_UNDERLINE
 
-            if tool_state and tool_state.start_point and tool_state.start_point[0] == mx and tool_state.start_point[1] == my:
-                attr |= curses.A_BOLD | curses.A_UNDERLINE
-
-            if tool_state and tool_state.measure_start and tool_state.measure_start[0] == mx and tool_state.measure_start[1] == my:
-                attr |= curses.A_BOLD | curses.A_UNDERLINE
-
-            try:
-                stdscr.addch(vy, vx, ch, attr)
-            except curses.error:
-                pass
+            if _screen_cache_char[vy, vx] != ch or _screen_cache_attr[vy, vx] != attr:
+                try:
+                    stdscr.addch(vy, vx, ch, attr)
+                    _screen_cache_char[vy, vx] = ch
+                    _screen_cache_attr[vy, vx] = attr
+                except curses.error:
+                    pass
 
     return view_height
 
@@ -77,14 +111,20 @@ def draw_status(stdscr, y, map_width, map_height, camera_x, camera_y,
     if tool_state.auto_tiling:
         status1 += f' AT:On'
     
+    stdscr.move(y, 0)
+    stdscr.clrtoeol()
     stdscr.addstr(y, 0, status1[:max_x-1])
 
     status2 = f'Map:{map_width}x{map_height} Cam:({camera_x},{camera_y}) Seed:{tool_state.seed} Tile:{selected_char}'
+    stdscr.move(y+1, 0)
+    stdscr.clrtoeol()
     stdscr.addstr(y+1, 0, status2[:max_x-1])
 
     undo_str = f'Undo:{len(undo_stack.undo_stack)}' if undo_stack.can_undo() else ''
     redo_str = f'Redo:{len(undo_stack.redo_stack)}' if undo_stack.can_redo() else ''
     status3 = f'{undo_str} {redo_str} [{get_key_name(bindings["show_help"])}]=Help [{get_key_name(bindings["quit"])}]=Quit'
+    stdscr.move(y+2, 0)
+    stdscr.clrtoeol()
     stdscr.addstr(y+2, 0, status3[:max_x-1])
 
 

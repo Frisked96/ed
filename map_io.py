@@ -1,6 +1,7 @@
 import os
 import json
 import curses
+import numpy as np
 from PIL import Image
 
 def load_config():
@@ -50,13 +51,9 @@ def save_config(bindings):
     except: pass
 
 def export_to_image(map_data, tile_colors, filename, tile_size=8):
-    height = len(map_data)
-    width = len(map_data[0])
+    height, width = map_data.shape
 
-    img = Image.new('RGB', (width * tile_size, height * tile_size), color=(0, 0, 0))
-    pixels = img.load()
-
-    color_map = {
+    color_lookup = {
         curses.COLOR_BLACK: (0, 0, 0),
         curses.COLOR_RED: (255, 0, 0),
         curses.COLOR_GREEN: (0, 255, 0),
@@ -67,12 +64,16 @@ def export_to_image(map_data, tile_colors, filename, tile_size=8):
         curses.COLOR_WHITE: (255, 255, 255),
     }
 
-    for y in range(height):
-        for x in range(width):
-            ch = map_data[y][x]
-            color = color_map.get(tile_colors.get(ch, curses.COLOR_WHITE), (255, 255, 255))
-            for dy in range(tile_size):
-                for dx in range(tile_size):
-                    pixels[x * tile_size + dx, y * tile_size + dy] = color
+    # Create an RGB array for the map
+    rgb_map = np.zeros((height, width, 3), dtype=np.uint8)
+    
+    unique_chars = np.unique(map_data)
+    for ch in unique_chars:
+        color = color_lookup.get(tile_colors.get(ch, curses.COLOR_WHITE), (255, 255, 255))
+        rgb_map[map_data == ch] = color
 
+    img = Image.fromarray(rgb_map, 'RGB')
+    if tile_size != 1:
+        img = img.resize((width * tile_size, height * tile_size), Image.NEAREST)
+    
     img.save(filename)

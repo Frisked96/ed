@@ -81,6 +81,7 @@ def test_application():
     # We can call the core logic behind it though.
     new_map = Map(20, 20, fill_char='.')
     session.map_obj = new_map
+    session.map_obj.undo_stack = session.undo_stack
     
     # Can't call menu_statistics as it's all curses based.
     # Instead, we can simulate the data gathering part if it were separate.
@@ -90,13 +91,13 @@ def test_application():
     for _ in range(10):
         if session.undo_stack.can_undo():
             res = session.undo_stack.undo(session.map_obj.copy_data())
-            if res:
+            if res is not None:
                 session.map_obj.data = res
 
     for _ in range(5):
         if session.undo_stack.can_redo():
             res = session.undo_stack.redo(session.map_obj.copy_data())
-            if res:
+            if res is not None:
                 session.map_obj.data = res
 
 

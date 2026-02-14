@@ -1,4 +1,3 @@
-import curses
 import time
 import random
 import numpy as np
@@ -13,11 +12,16 @@ DEFAULT_TILE_COLORS = {
     'G': 'yellow', '+': 'yellow', '*': 'magenta', '@': 'blue',
 }
 
+# RGB Color Map
 COLOR_MAP = {
-    'black': curses.COLOR_BLACK, 'red': curses.COLOR_RED,
-    'green': curses.COLOR_GREEN, 'yellow': curses.COLOR_YELLOW,
-    'blue': curses.COLOR_BLUE, 'magenta': curses.COLOR_MAGENTA,
-    'cyan': curses.COLOR_CYAN, 'white': curses.COLOR_WHITE,
+    'black': (0, 0, 0),
+    'red': (255, 0, 0),
+    'green': (0, 255, 0),
+    'yellow': (255, 255, 0),
+    'blue': (0, 0, 255),
+    'magenta': (255, 0, 255),
+    'cyan': (0, 255, 255),
+    'white': (255, 255, 255),
 }
 
 class Map:

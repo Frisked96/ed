@@ -1,24 +1,31 @@
-import curses
+import pygame
+import sys
 from core import COLOR_MAP
 
 def parse_color_name(name):
-    return COLOR_MAP.get(name.lower(), curses.COLOR_WHITE)
+    # Returns an RGB tuple
+    return COLOR_MAP.get(name.lower(), (255, 255, 255))
 
 def get_key_name(key):
-    if key == ord(' '): return 'SPACE'
+    # key is an integer code
+    if key == 32: return 'SPACE'
     elif key == 27: return 'ESC'
-    elif key == 127 or key == curses.KEY_BACKSPACE: return 'BKSP'
-    else:
-        try:
-            name = curses.keyname(key)
-            if name:
-                decoded = name.decode('utf-8', 'ignore').upper()
-                if decoded.startswith('KEY_'):
-                    decoded = decoded[4:]
-                return decoded
-        except: pass
-        if 32 <= key <= 126: return chr(key).upper()
-        return f'KEY_{key}'
+    elif key == 8: return 'BKSP'
+    elif key == 13: return 'ENTER'
+    elif key == 9: return 'TAB'
+
+    # Check Pygame constants
+    try:
+        name = pygame.key.name(key)
+        if name and name != 'unknown key':
+            return name.upper()
+    except: pass
+
+    # Check ASCII
+    if 32 <= key <= 126:
+        return chr(key)
+
+    return f'KEY_{key}'
 
 def get_distance(p1, p2):
     return ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
@@ -50,37 +57,75 @@ def shift_map(map_data, dx, dy):
             new_map[(y + dy) % height][(x + dx) % width] = map_data[y][x]
     return new_map
 
-def get_user_input(stdscr, y, x, prompt, echo=True):
-    if y is not None and x is not None:
-        stdscr.addstr(y, x, prompt)
-        stdscr.clrtoeol()
-        stdscr.refresh()
+def get_user_input(context, y, x, prompt, echo=True):
+    # context is PygameContext
+    screen = context.screen
+    font = context.font
+    clock = context.clock
     
-    stdscr.timeout(-1)
-    curses.flushinp()
-    if echo:
-        curses.echo()
-        curses.curs_set(1)
+    px = x * context.tile_size
+    py = y * context.tile_size
     
-    try:
-        result = stdscr.getstr().decode().strip()
-    except:
-        result = ""
-        
-    if echo:
-        curses.noecho()
-        curses.curs_set(0)
+    input_text = ""
     
-    return result
+    # Capture background to restore it each frame (optional, but good for cleanliness)
+    # However, since we are in a loop, we might just want to draw a black box
+    # mimicking the terminal behavior where the input line clears everything under it.
 
-def get_user_confirmation(stdscr, y, x, prompt):
-    if y is not None and x is not None:
-        stdscr.addstr(y, x, prompt)
-        stdscr.clrtoeol()
-        stdscr.refresh()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return input_text
+                elif event.key == pygame.K_ESCAPE:
+                    return ""
+                elif event.key == pygame.K_BACKSPACE:
+                    input_text = input_text[:-1]
+                else:
+                    if event.unicode and event.unicode.isprintable():
+                        input_text += event.unicode
+
+        # Draw black box background for the input line
+        rect_w = context.width - px
+        rect_h = context.tile_size
+        pygame.draw.rect(screen, (0, 0, 0), (px, py, rect_w, rect_h))
+
+        # Render text
+        text_surf = font.render(prompt + input_text + "_", True, (255, 255, 255))
+        screen.blit(text_surf, (px, py))
+
+        pygame.display.flip()
+        clock.tick(30)
+
+def get_user_confirmation(context, y, x, prompt):
+    # context is PygameContext
+    screen = context.screen
+    font = context.font
+    clock = context.clock
+
+    px = x * context.tile_size
+    py = y * context.tile_size
+
+    # Initial draw
+    rect_w = context.width - px
+    rect_h = context.tile_size
+    pygame.draw.rect(screen, (0, 0, 0), (px, py, rect_w, rect_h))
     
-    stdscr.timeout(-1)
-    key = stdscr.getch()
-    # Timeout will be restored by the main loop in next iteration
+    text_surf = font.render(prompt, True, (255, 255, 255))
+    screen.blit(text_surf, (px, py))
+    pygame.display.flip()
     
-    return key in (ord('y'), ord('Y'))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_y:
+                    return True
+                elif event.key == pygame.K_n or event.key == pygame.K_ESCAPE:
+                    return False
+        clock.tick(10)

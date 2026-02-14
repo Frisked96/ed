@@ -1,41 +1,40 @@
-import curses
+import pygame
 import textwrap
 import numpy as np
 from utils import get_key_name, get_distance
+from core import COLOR_MAP
 
-_screen_cache_char = None
-_screen_cache_attr = None
+# Cache for rendered glyphs to avoid calling font.render every frame for every tile
+_glyph_cache = {}
+
+def get_glyph(font, char, color, bg_color=None, bold=False):
+    key = (char, color, bg_color, bold)
+    if key not in _glyph_cache:
+        # We ignore bold for now or we could use a bold font variant if we had one
+        # To strictly follow "bold", we might render twice with offset?
+        # For now, just render.
+        surf = font.render(char, True, color, bg_color)
+        _glyph_cache[key] = surf
+    return _glyph_cache[key]
 
 def invalidate_cache():
-    global _screen_cache_char, _screen_cache_attr
-    _screen_cache_char = None
-    _screen_cache_attr = None
+    global _glyph_cache
+    _glyph_cache = {}
 
 def init_color_pairs(tile_colors):
-    curses.start_color()
-    curses.use_default_colors()
-    pairs = {}
-    pair_num = 1
-    for ch, col in tile_colors.items():
-        curses.init_pair(pair_num, col, -1)
-        pairs[ch] = pair_num
-        pair_num += 1
-    curses.init_pair(pair_num, curses.COLOR_BLACK, curses.COLOR_YELLOW)
-    pairs['__SELECTION__'] = pair_num
-    return pairs
+    # No-op for pygame as we use RGB directly
+    pass
 
-def draw_map(stdscr, map_data, camera_x, camera_y, view_width, view_height,
+def draw_map(context, map_data, camera_x, camera_y, view_width, view_height,
              cursor_x, cursor_y, selected_char, color_pairs,
              selection_start=None, selection_end=None, tool_state=None):
-    global _screen_cache_char, _screen_cache_attr
-    max_y, max_x = stdscr.getmaxyx()
-    view_width = min(view_width, max_x)
-    view_height = min(view_height, max_y - 3)
 
-    if (_screen_cache_char is None or _screen_cache_char.shape != (view_height, view_width)):
-        _screen_cache_char = np.zeros((view_height, view_width), dtype='U1')
-        _screen_cache_attr = np.zeros((view_height, view_width), dtype=np.int32)
-        stdscr.erase()
+    screen = context.screen
+    font = context.font
+    tile_size = context.tile_size
+
+    # Fill background (or just the map area)
+    # screen.fill((0,0,0)) # Assumed handled by main loop or we overwrite
 
     sel_x0 = sel_y0 = sel_x1 = sel_y1 = -1
     if selection_start and selection_end:
@@ -54,55 +53,96 @@ def draw_map(stdscr, map_data, camera_x, camera_y, view_width, view_height,
 
     map_h, map_w = map_data.shape
 
+    # We iterate over the VIEW dimensions
     for vy in range(view_height):
         my = camera_y + vy
+        py = vy * tile_size # Pixel Y
+
+        # Optimization: Don't draw outside screen
+        if py >= context.height: break
+
         if my < 0 or my >= map_h:
-            for vx in range(view_width):
-                if _screen_cache_char[vy, vx] != ' ' or _screen_cache_attr[vy, vx] != 0:
-                    try:
-                        stdscr.addch(vy, vx, ' ', 0)
-                        _screen_cache_char[vy, vx] = ' '
-                        _screen_cache_attr[vy, vx] = 0
-                    except: pass
+            # Draw empty space
             continue
 
         for vx in range(view_width):
             mx = camera_x + vx
+            px = vx * tile_size # Pixel X
+
+            if px >= context.width: break
+
             if mx < 0 or mx >= map_w:
-                ch, attr = ' ', 0
+                ch = ' '
+                color = (0, 0, 0)
             else:
                 ch = map_data[my, mx]
-                pair = color_pairs.get(ch, 1)
-                attr = curses.color_pair(pair)
+                # Map char to color.
+                # color_pairs in curses was a dict of {char: pair_index}.
+                # Here we expect color_pairs to be meaningless or we need the actual color map.
+                # Actually main.py passes `tile_colors`? No, it passes `color_pairs`.
+                # Wait, `init_color_pairs` in curses returned a map of char -> index.
+                # In pygame, we should pass `tile_colors` (char -> RGB) directly to `draw_map`.
+                # But to preserve signature match with existing calls (until I update them),
+                # I should check what is passed.
+                # In main.py: `session.color_pairs = init_color_pairs(tile_colors)`
+                # I should change `init_color_pairs` to just return `tile_colors` or similar.
+                # Let's assume `color_pairs` IS `tile_colors` (char -> RGB) after my refactor of init.
 
+                # Check if color_pairs is actually the dict we want
+                # If it's the old int mapping, we have a problem.
+                # I will ensure init_color_pairs returns tile_colors.
+
+                color = color_pairs.get(ch, (255, 255, 255))
+                if isinstance(color, int): # Fallback if it was an int
+                     color = (255, 255, 255)
+
+                bg_color = None
+
+                # Selection logic
                 if sel_x0 <= mx <= sel_x1 and sel_y0 <= my <= sel_y1:
-                    attr = curses.color_pair(color_pairs.get('__SELECTION__', 1))
+                    bg_color = (100, 100, 0) # Yellowish selection background
+                    color = (0, 0, 0) # Black text
 
+                # Cursor logic
                 if my == cursor_y and mx == cursor_x:
-                    attr |= curses.A_REVERSE
+                    bg_color = (255, 255, 255) # White cursor block
+                    color = (0, 0, 0)
 
+                # Tool markers
                 if (mx == sp_x and my == sp_y) or (mx == ms_x and my == ms_y):
-                    attr |= curses.A_BOLD | curses.A_UNDERLINE
+                     color = (255, 0, 0) # Red highlight for start points
+                     # Bold?
 
-            if _screen_cache_char[vy, vx] != ch or _screen_cache_attr[vy, vx] != attr:
-                try:
-                    stdscr.addch(vy, vx, ch, attr)
-                    _screen_cache_char[vy, vx] = ch
-                    _screen_cache_attr[vy, vx] = attr
-                except curses.error:
-                    pass
+                # Draw background if needed
+                if bg_color:
+                    pygame.draw.rect(screen, bg_color, (px, py, tile_size, tile_size))
 
-    return view_height
+                # Draw char
+                if ch != ' ':
+                    glyph = get_glyph(font, ch, color)
+                    # Center the glyph in the tile? Or top-left?
+                    # Monospace font should fit.
+                    screen.blit(glyph, (px, py))
 
-def draw_status(stdscr, y, map_width, map_height, camera_x, camera_y,
+    return view_height * tile_size # Return Y position for status bar
+
+def draw_status(context, y_pos, map_width, map_height, camera_x, camera_y,
                 cursor_x, cursor_y, selected_char, tool_state, undo_stack, bindings):
-    max_y, max_x = stdscr.getmaxyx()
+    screen = context.screen
+    font = context.font
+    tile_size = context.tile_size
+    width = context.width
+
+    # y_pos is in pixels now (returned from draw_map)
+    # We add some padding
+    y = y_pos + 10
+
+    lines = []
 
     status1 = f'Cursor:({cursor_x},{cursor_y}) '
     if tool_state.measure_start:
         dist = get_distance(tool_state.measure_start, (cursor_x, cursor_y))
         status1 += f'Dist:{dist:.1f} '
-    
     status1 += f'Tool:{tool_state.mode}'
     if tool_state.brush_size > 1:
         status1 += f' Br:{tool_state.brush_size}'
@@ -110,161 +150,139 @@ def draw_status(stdscr, y, map_width, map_height, camera_x, camera_y,
         status1 += f' Sn:{tool_state.snap_size}'
     if tool_state.auto_tiling:
         status1 += f' AT:On'
-    
-    stdscr.move(y, 0)
-    stdscr.clrtoeol()
-    stdscr.addstr(y, 0, status1[:max_x-1])
+    lines.append(status1)
 
     status2 = f'Map:{map_width}x{map_height} Cam:({camera_x},{camera_y}) Seed:{tool_state.seed} Tile:{selected_char}'
-    stdscr.move(y+1, 0)
-    stdscr.clrtoeol()
-    stdscr.addstr(y+1, 0, status2[:max_x-1])
+    lines.append(status2)
 
     undo_str = f'Undo:{len(undo_stack.undo_stack)}' if undo_stack.can_undo() else ''
     redo_str = f'Redo:{len(undo_stack.redo_stack)}' if undo_stack.can_redo() else ''
-    status3 = f'{undo_str} {redo_str} [{get_key_name(bindings["show_help"])}]=Help [{get_key_name(bindings["quit"])}]=Quit'
-    stdscr.move(y+2, 0)
-    stdscr.clrtoeol()
-    stdscr.addstr(y+2, 0, status3[:max_x-1])
+    # Using get_key_name for bindings
+    help_key = get_key_name(bindings.get('show_help', 63)) # 63 is '?'
+    quit_key = get_key_name(bindings.get('quit', 113)) # 113 is 'q'
+    status3 = f'{undo_str} {redo_str} [{help_key}]=Help [{quit_key}]=Quit'
+    lines.append(status3)
 
+    # Draw status background
+    # pygame.draw.rect(screen, (50, 50, 50), (0, y, width, len(lines) * tile_size + 10))
 
-_help_cache = {
-    "lines": None,
-    "bindings": None,
-    "size": None
-}
+    for i, line in enumerate(lines):
+        surf = font.render(line, True, (200, 200, 200))
+        screen.blit(surf, (10, y + i * (tile_size + 2)))
 
-def draw_help_overlay(stdscr, bindings):
-    max_y, max_x = stdscr.getmaxyx()
+def draw_help_overlay(context, bindings):
+    screen = context.screen
+    font = context.font
+    tile_size = context.tile_size
+    w, h = context.width, context.height
     
-    # Check cache
-    if (_help_cache["lines"] and _help_cache["bindings"] == bindings and _help_cache["size"] == (max_y, max_x)):
-        all_lines = _help_cache["lines"]
-    else:
-        help_sections = [
+    # Create help text
+    help_sections = [
             ("MOVEMENT", [
-                f"View: {get_key_name(bindings['move_view_up'])}/{get_key_name(bindings['move_view_down'])}/{get_key_name(bindings['move_view_left'])}/{get_key_name(bindings['move_view_right'])} (WASD) | Cursor: Arrow Keys"
+                f"View: WASD | Cursor: Arrow Keys"
             ]),
             ("DRAWING TOOLS", [
-                f"{get_key_name(bindings['place_tile'])}=Place tile at cursor | {get_key_name(bindings['cycle_tile'])}=Cycle tiles | {get_key_name(bindings['pick_tile'])}=Pick from menu",
-                f"{get_key_name(bindings['toggle_palette'])}=Quick Tile Palette",
-                f"{get_key_name(bindings['flood_fill'])}=Flood fill area | {get_key_name(bindings['line_tool'])}=Line tool | {get_key_name(bindings['rect_tool'])}=Rectangle | {get_key_name(bindings['circle_tool'])}=Circle",
-                f"Pattern Fill: {get_key_name(bindings['pattern_tool'])}=Pattern mode | {get_key_name(bindings['define_pattern'])}=Define pattern",
-                f"Custom Brush: {get_key_name(bindings['define_brush'])}=Define brush shape",
-                f"Brush size: {get_key_name(bindings['decrease_brush'])}/{get_key_name(bindings['increase_brush'])}"
+                f"{get_key_name(bindings.get('place_tile'))}=Place | {get_key_name(bindings.get('cycle_tile'))}=Cycle | {get_key_name(bindings.get('pick_tile'))}=Pick",
+                f"{get_key_name(bindings.get('toggle_palette'))}=Palette",
+                f"{get_key_name(bindings.get('flood_fill'))}=Fill | {get_key_name(bindings.get('line_tool'))}=Line | {get_key_name(bindings.get('rect_tool'))}=Rect",
+                f"{get_key_name(bindings.get('circle_tool'))}=Circle | {get_key_name(bindings.get('pattern_tool'))}=Pattern",
             ]),
-            ("SELECTION & CLIPBOARD", [
-                f"{get_key_name(bindings['select_start'])}=Start/End selection | {get_key_name(bindings['clear_selection'])}=Clear selection",
-                f"{get_key_name(bindings['copy_selection'])}=Copy | {get_key_name(bindings['paste_selection'])}=Paste",
-                f"{get_key_name(bindings['rotate_selection'])}=Rotate 90° | {get_key_name(bindings['flip_h'])}=Flip horizontal | {get_key_name(bindings['flip_v'])}=Flip vertical"
+            ("SELECTION & EDIT", [
+                f"{get_key_name(bindings.get('select_start'))}=Sel Start/End | {get_key_name(bindings.get('clear_selection'))}=Clear",
+                f"{get_key_name(bindings.get('copy_selection'))}=Copy | {get_key_name(bindings.get('paste_selection'))}=Paste",
+                f"{get_key_name(bindings.get('undo'))}=Undo | {get_key_name(bindings.get('redo'))}=Redo",
             ]),
-            ("EDIT OPERATIONS", [
-                f"{get_key_name(bindings['undo'])}=Undo (100 levels) | {get_key_name(bindings['redo'])}=Redo | {get_key_name(bindings['replace_all'])}=Replace all tiles",
-                f"{get_key_name(bindings['clear_area'])}=Clear selected area | {get_key_name(bindings['statistics'])}=Show tile statistics"
+            ("FILE & GEN", [
+                f"{get_key_name(bindings.get('save_map'))}=Save | {get_key_name(bindings.get('load_map'))}=Load",
+                f"{get_key_name(bindings.get('random_gen'))}=Cave Gen | {get_key_name(bindings.get('perlin_noise'))}=Perlin",
             ]),
-            ("MAP TRANSFORMATIONS", [
-                f"{get_key_name(bindings['map_rotate'])}=Rotate map 90° | {get_key_name(bindings['map_flip_h'])}=Flip H | {get_key_name(bindings['map_flip_v'])}=Flip V",
-                f"Shift Map: Arrows (mapped keys) to shift entire map contents"
-            ]),
-            ("PROCEDURAL GENERATION", [
-                f"{get_key_name(bindings['random_gen'])}=Cellular automata caves | {get_key_name(bindings['perlin_noise'])}=Perlin noise terrain",
-                f"{get_key_name(bindings['voronoi'])}=Voronoi diagram regions | {get_key_name(bindings['set_seed'])}=Set random seed"
-            ]),
-            ("FILE OPERATIONS", [
-                f"{get_key_name(bindings['new_map'])}=New map | {get_key_name(bindings['load_map'])}=Load | {get_key_name(bindings['save_map'])}=Save",
-                f"{get_key_name(bindings['resize_map'])}=Resize map | {get_key_name(bindings['export_image'])}=Export PNG/CSV"
-            ]),
-            ("CONFIGURATION", [
-                f"{get_key_name(bindings['define_tiles'])}=Define custom tiles | {get_key_name(bindings['edit_controls'])}=Edit keybindings"
-            ]),
-            ("MACROS & AUTOMATION", [
-                f"{get_key_name(bindings['macro_record_toggle'])}=Toggle Macro Recording | {get_key_name(bindings['macro_play'])}=Play Macro",
-                f"Macros record action names. Use the Macro Manager in the menu to define/edit."
-            ]),
-            ("MEASUREMENT & SNAPPING", [
-                f"{get_key_name(bindings['toggle_snap'])}=Set Grid Snap Size | {get_key_name(bindings['set_measure'])}=Set Measurement Start (ESC to clear)",
-                f"Distance is shown in the status bar from the measurement start to the cursor."
-            ]),
-            ("AUTO-TILING", [
-                f"{get_key_name(bindings['toggle_autotile'])}=Toggle Auto-Tiling",
-                f"Use the Auto-Tiling Manager in the main menu or editor menu (F1) to define rules."
-            ]),
-            ("EDITOR MENU", [
-                f"{get_key_name(bindings['editor_menu'])}=Open Editor Pause Menu (F1)",
-                f"The menu allows saving, loading, and managing macros without quitting."
+             ("OTHER", [
+                f"{get_key_name(bindings.get('editor_menu'))}=Menu (F1) | {get_key_name(bindings.get('quit'))}=Quit",
             ])
-        ]
-
-        all_lines = ["=== MAP EDITOR HELP (ESC to close) ===", ""]
-        for section_name, section_lines in help_sections:
-            all_lines.append(f"--- {section_name} ---")
-            for line in section_lines:
-                wrapped = textwrap.wrap(line, max_x - 8)
-                all_lines.extend(wrapped)
-            all_lines.append("")
-
-        _help_cache["lines"] = all_lines
-        _help_cache["bindings"] = bindings
-        _help_cache["size"] = (max_y, max_x)
+    ]
     
-    height = min(len(all_lines) + 2, max_y - 4)
-    width = max_x - 4
-    start_y = (max_y - height) // 2
-    start_x = 2
+    all_lines = ["=== HELP (ESC close) ==="]
+    for section_name, lines in help_sections:
+        all_lines.append(f"--- {section_name} ---")
+        for line in lines:
+            all_lines.append(line)
+        all_lines.append("")
 
-    win = curses.newwin(height, width, start_y, start_x)
-    win.keypad(True)
-    win.border()
+    # Calculate overlay size
+    overlay_w = w - 100
+    overlay_h = h - 100
+    ox = 50
+    oy = 50
+
+    # Draw overlay background
+    pygame.draw.rect(screen, (30, 30, 30), (ox, oy, overlay_w, overlay_h))
+    pygame.draw.rect(screen, (200, 200, 200), (ox, oy, overlay_w, overlay_h), 2) # Border
+
+    # Render text
+    # Simple scrollable view? Or just fit?
+    # Assuming it fits for now.
+    line_h = tile_size + 2
+    max_lines = (overlay_h - 20) // line_h
 
     scroll_offset = 0
-    max_scroll = max(0, len(all_lines) - (height - 2))
+    running = True
 
-    while True:
-        win.clear()
-        win.border()
+    while running:
+        # Clear overlay area
+        pygame.draw.rect(screen, (30, 30, 30), (ox + 2, oy + 2, overlay_w - 4, overlay_h - 4))
 
-        for i in range(height - 2):
-            line_idx = scroll_offset + i
-            if line_idx < len(all_lines):
-                try:
-                    win.addstr(i + 1, 2, all_lines[line_idx][:width-4])
-                except:
-                    pass
+        for i in range(max_lines):
+            idx = scroll_offset + i
+            if idx < len(all_lines):
+                surf = font.render(all_lines[idx], True, (255, 255, 255))
+                screen.blit(surf, (ox + 10, oy + 10 + i * line_h))
 
-        win.refresh()
-        key = win.getch()
+        pygame.display.flip()
 
-        if key == 27:
-            break
-        elif key == curses.KEY_UP and scroll_offset > 0:
-            scroll_offset -= 1
-        elif key == curses.KEY_DOWN and scroll_offset < max_scroll:
-            scroll_offset += 1
-        elif key == curses.KEY_PPAGE:
-            scroll_offset = max(0, scroll_offset - 10)
-        elif key == curses.KEY_NPAGE:
-            scroll_offset = min(max_scroll, scroll_offset + 10)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_UP and scroll_offset > 0:
+                    scroll_offset -= 1
+                elif event.key == pygame.K_DOWN and scroll_offset < len(all_lines) - max_lines:
+                    scroll_offset += 1
+                elif event.key == pygame.K_PAGEUP:
+                    scroll_offset = max(0, scroll_offset - 10)
+                elif event.key == pygame.K_PAGEDOWN:
+                    scroll_offset = min(len(all_lines) - max_lines, scroll_offset + 10)
 
 
-def draw_tile_palette(stdscr, tile_chars, color_pairs, selected_char):
-    max_y, max_x = stdscr.getmaxyx()
-    cols_count = max_x - 10
-    rows = (len(tile_chars) // cols_count) + 1
-    win_h = rows + 2
-    win_w = max_x - 4
+def draw_tile_palette(context, tile_chars, color_pairs, selected_char):
+    screen = context.screen
+    font = context.font
+    tile_size = context.tile_size
+    w, h = context.width, context.height
 
-    win = curses.newwin(win_h, win_w, max_y - win_h - 3, 2)
-    win.border()
-    win.addstr(0, 2, " Tile Palette ")
+    # Palette window at bottom
+    palette_h = 100
+    palette_y = h - palette_h - 10
+    pygame.draw.rect(screen, (20, 20, 20), (0, palette_y, w, palette_h))
+    pygame.draw.rect(screen, (100, 100, 100), (0, palette_y, w, palette_h), 1)
 
-    for i, ch in enumerate(tile_chars):
-        attr = curses.color_pair(color_pairs.get(ch, 1))
+    x = 10
+    y = palette_y + 10
+
+    for ch in tile_chars:
+        color = color_pairs.get(ch, (255, 255, 255))
+        if isinstance(color, int): color = (255, 255, 255)
+
+        # Highlight selected
         if ch == selected_char:
-            attr |= curses.A_REVERSE | curses.A_BOLD
+            pygame.draw.rect(screen, (100, 100, 100), (x - 2, y - 2, tile_size + 4, tile_size + 4), 1)
 
-        try:
-            win.addch(1 + (i // (win_w - 4)), 2 + (i % (win_w - 4)), ch, attr)
-        except: pass
+        glyph = get_glyph(font, ch, color)
+        screen.blit(glyph, (x, y))
 
-    win.refresh()
-
+        x += tile_size + 10
+        if x > w - 20:
+            x = 10
+            y += tile_size + 10

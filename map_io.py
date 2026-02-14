@@ -1,16 +1,19 @@
 import os
 import json
-import curses
+import pygame
 import numpy as np
 from PIL import Image
+from core import COLOR_MAP
 
 def load_config():
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
+    # Default bindings using pygame key codes for special keys
+    # For printable characters, we use ord(char) which matches ord(event.unicode)
     default_bindings = {
         'move_view_up': ord('w'), 'move_view_down': ord('s'),
         'move_view_left': ord('a'), 'move_view_right': ord('d'),
-        'move_cursor_up': curses.KEY_UP, 'move_cursor_down': curses.KEY_DOWN,
-        'move_cursor_left': curses.KEY_LEFT, 'move_cursor_right': curses.KEY_RIGHT,
+        'move_cursor_up': pygame.K_UP, 'move_cursor_down': pygame.K_DOWN,
+        'move_cursor_left': pygame.K_LEFT, 'move_cursor_right': pygame.K_RIGHT,
         'place_tile': ord('e'), 'cycle_tile': ord('c'), 'pick_tile': ord('t'),
         'flood_fill': ord('f'), 'line_tool': ord('i'), 'rect_tool': ord('r'),
         'circle_tool': ord('b'), 'select_start': ord('v'), 'clear_selection': ord('V'),
@@ -29,9 +32,9 @@ def load_config():
         'map_shift_up': -1, 'map_shift_down': -1,
         'map_shift_left': -1, 'map_shift_right': -1,
         'macro_record_toggle': ord('('), 'macro_play': ord(')'),
-        'editor_menu': curses.KEY_F1,
+        'editor_menu': pygame.K_F1,
         'toggle_snap': ord('G'), 'set_measure': ord('N'),
-        'toggle_palette': 9,
+        'toggle_palette': pygame.K_TAB,
         'toggle_autotile': ord('A'),
         'quit': ord('q'),
     }
@@ -53,23 +56,21 @@ def save_config(bindings):
 def export_to_image(map_data, tile_colors, filename, tile_size=8):
     height, width = map_data.shape
 
-    color_lookup = {
-        curses.COLOR_BLACK: (0, 0, 0),
-        curses.COLOR_RED: (255, 0, 0),
-        curses.COLOR_GREEN: (0, 255, 0),
-        curses.COLOR_YELLOW: (255, 255, 0),
-        curses.COLOR_BLUE: (0, 0, 255),
-        curses.COLOR_MAGENTA: (255, 0, 255),
-        curses.COLOR_CYAN: (0, 255, 255),
-        curses.COLOR_WHITE: (255, 255, 255),
-    }
+    # tile_colors maps char -> RGB tuple (from core.py)
+    # We need to handle if tile_colors values are still old names (from loaded config?)
+    # But tile_colors passed in comes from editor session which uses core.COLOR_MAP values (RGB)
 
     # Create an RGB array for the map
     rgb_map = np.zeros((height, width, 3), dtype=np.uint8)
     
     unique_chars = np.unique(map_data)
     for ch in unique_chars:
-        color = color_lookup.get(tile_colors.get(ch, curses.COLOR_WHITE), (255, 255, 255))
+        # tile_colors[ch] should be an RGB tuple
+        color = tile_colors.get(ch, (255, 255, 255))
+        # Ensure it's a tuple, just in case
+        if isinstance(color, str):
+            color = COLOR_MAP.get(color, (255, 255, 255))
+
         rgb_map[map_data == ch] = color
 
     img = Image.fromarray(rgb_map, 'RGB')

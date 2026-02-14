@@ -154,7 +154,7 @@ def draw_help_overlay(stdscr, bindings):
         for section_name, section_lines in help_sections:
             all_lines.append(f"--- {section_name} ---")
             for line in section_lines:
-                wrapped = textwrap.wrap(line, max_x - 6)
+                wrapped = textwrap.wrap(line, max_x - 8)
                 all_lines.extend(wrapped)
             all_lines.append("")
 
@@ -163,11 +163,12 @@ def draw_help_overlay(stdscr, bindings):
         _help_cache["size"] = (max_y, max_x)
     
     height = min(len(all_lines) + 2, max_y - 4)
-    width = min(max_x - 4, max_x - 4)
+    width = max_x - 4
     start_y = (max_y - height) // 2
     start_x = 2
 
     win = curses.newwin(height, width, start_y, start_x)
+    win.keypad(True)
     win.border()
 
     scroll_offset = 0
@@ -221,3 +222,4 @@ def draw_tile_palette(stdscr, tile_chars, color_pairs, selected_char):
         except: pass
 
     win.refresh()
+

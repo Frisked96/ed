@@ -78,21 +78,21 @@ def draw_rectangle(map_obj, x0, y0, x1, y1, char, filled, brush_size=1, brush_sh
     min_y, max_y = min(y0, y1), max(y0, y1)
 
     if filled:
-        for y in range(min_y, max_y + 1):
-            for x in range(min_x, max_x + 1):
+        for y in range(max(0, min_y), min(map_obj.height - 1, max_y) + 1):
+            for x in range(max(0, min_x), min(map_obj.width - 1, max_x) + 1):
                 map_obj.set(x, y, char)
     else:
-        for x in range(min_x, max_x + 1):
+        for x in range(max(0, min_x), min(map_obj.width - 1, max_x) + 1):
             place_tile_at(map_obj, x, min_y, char, brush_size, brush_shape, tool_state)
             place_tile_at(map_obj, x, max_y, char, brush_size, brush_shape, tool_state)
-        for y in range(min_y, max_y + 1):
+        for y in range(max(0, min_y), min(map_obj.height - 1, max_y) + 1):
             place_tile_at(map_obj, min_x, y, char, brush_size, brush_shape, tool_state)
             place_tile_at(map_obj, max_x, y, char, brush_size, brush_shape, tool_state)
 
 def draw_circle(map_obj, cx, cy, radius, char, filled, brush_size=1, brush_shape=None, tool_state=None):
     if filled:
-        for y in range(cy - radius, cy + radius + 1):
-            for x in range(cx - radius, cx + radius + 1):
+        for y in range(max(0, cy - radius), min(map_obj.height - 1, cy + radius) + 1):
+            for x in range(max(0, cx - radius), min(map_obj.width - 1, cx + radius) + 1):
                 if ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5 <= radius:
                     map_obj.set(x, y, char)
     else:
@@ -121,6 +121,6 @@ def draw_pattern_rectangle(map_obj, x0, y0, x1, y1, pattern):
     min_x, max_x = min(x0, x1), max(x0, x1)
     min_y, max_y = min(y0, y1), max(y0, y1)
 
-    for y in range(min_y, max_y + 1):
-        for x in range(min_x, max_x + 1):
+    for y in range(max(0, min_y), min(map_obj.height - 1, max_y) + 1):
+        for x in range(max(0, min_x), min(map_obj.width - 1, max_x) + 1):
             map_obj.set(x, y, pattern[(y - min_y) % p_h][(x - min_x) % p_w])

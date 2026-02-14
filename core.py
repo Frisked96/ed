@@ -129,3 +129,5 @@ class EditorSession:
         self.selection_end = None
         self.clipboard = None
         self.running = True
+        self.key_map = {}
+        self.action_queue = deque()

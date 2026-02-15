@@ -12,6 +12,11 @@ class EditorState(State):
         self.renderer = renderer
         self.input_handler = InputHandler(session)
         self.renderer.update_dimensions()
+        
+        # Set initial fixed pixel dimensions
+        self.session.viewport_px_w = self.renderer.width
+        self.session.viewport_px_h = self.renderer.height - 120
+        
         self.palette_rects = None
 
     def enter(self, **kwargs):
@@ -61,8 +66,12 @@ class EditorState(State):
 
         elif event.type == pygame.VIDEORESIZE:
             self.renderer.update_dimensions()
-            self.session.view_width = min(self.session.view_width, self.renderer.width // self.renderer.tile_size)
-            self.session.view_height = min(self.session.view_height, (self.renderer.height // self.renderer.tile_size) - 5)
+            self.session.viewport_px_w = self.renderer.width
+            self.session.viewport_px_h = self.renderer.height - 120
+            
+            # Update tile counts based on new pixel area
+            self.session.view_width = self.session.viewport_px_w // self.renderer.tile_size
+            self.session.view_height = self.session.viewport_px_h // self.renderer.tile_size
 
 
     def update(self, dt):

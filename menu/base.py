@@ -67,6 +67,37 @@ def _render_menu_generic(context, title, lines, selected_idx=-1):
         screen.blit(surf, (bx + 20, y))
         y += tile_size + 6
 
+    def draw(self, surface):
+        lines = [opt[0] for opt in self.options]
+        _render_menu_generic(self.context, self.title, lines, self.selected_idx)
+
+class MenuState(State):
+    def __init__(self, manager, context, title, options):
+        """
+        options: list of (label, callback) tuples
+        """
+        super().__init__(manager)
+        self.context = context
+        self.title = title
+        self.options = options
+        self.selected_idx = 0
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                self.selected_idx = (self.selected_idx - 1) % len(self.options)
+            elif event.key == pygame.K_DOWN:
+                self.selected_idx = (self.selected_idx + 1) % len(self.options)
+            elif event.key == pygame.K_RETURN:
+                callback = self.options[self.selected_idx][1]
+                if callback: callback()
+            elif event.key == pygame.K_ESCAPE:
+                self.manager.pop()
+
+    def draw(self, surface):
+        lines = [opt[0] for opt in self.options]
+        _render_menu_generic(self.context, self.title, lines, self.selected_idx)
+
 class TextInputState(State):
     def __init__(self, manager, context, prompt, callback, initial_text=""):
         super().__init__(manager)
@@ -205,57 +236,61 @@ class HelpState(State):
         self.all_lines = self._generate_help()
 
     def _generate_help(self):
-        b = self.bindings
-        help_sections = [
-            ("MOVEMENT", [
-                f"View: {get_key_name(b.get('move_view_up'))}/{get_key_name(b.get('move_view_down'))}/{get_key_name(b.get('move_view_left'))}/{get_key_name(b.get('move_view_right'))}",
-                f"Cursor: Arrow Keys"
-            ]),
-            ("DRAWING TOOLS", [
-                f"{get_key_name(b.get('place_tile'))}=Place tile | {get_key_name(b.get('cycle_tile'))}=Cycle tiles | {get_key_name(b.get('pick_tile'))}=Pick tile",
-                f"{get_key_name(b.get('flood_fill'))}=Flood fill | {get_key_name(b.get('line_tool'))}=Line | {get_key_name(b.get('rect_tool'))}=Rectangle",
-                f"{get_key_name(b.get('circle_tool'))}=Circle | {get_key_name(b.get('pattern_tool'))}=Pattern mode | {get_key_name(b.get('define_pattern'))}=Def Pattern",
-                f"Brush: {get_key_name(b.get('decrease_brush'))}/{get_key_name(b.get('increase_brush'))} (Size) | {get_key_name(b.get('define_brush'))}=Define shape",
-                f"{get_key_name(b.get('define_tiles'))}=Define Custom Tiles"
-            ]),
-            ("SELECTION & CLIPBOARD", [
-                f"{get_key_name(b.get('select_start'))}=Start/End selection | {get_key_name(b.get('clear_selection'))}=Clear",
-                f"{get_key_name(b.get('copy_selection'))}=Copy | {get_key_name(b.get('paste_selection'))}=Paste",
-                f"{get_key_name(b.get('rotate_selection'))}=Rotate Sel | {get_key_name(b.get('flip_h'))}=Flip H Sel | {get_key_name(b.get('flip_v'))}=Flip V Sel",
-                f"{get_key_name(b.get('clear_area'))}=Clear selected area"
-            ]),
-            ("EDIT OPERATIONS", [
-                f"{get_key_name(b.get('undo'))}=Undo | {get_key_name(b.get('redo'))}=Redo",
-                f"{get_key_name(b.get('replace_all'))}=Replace all tiles | {get_key_name(b.get('statistics'))}=Show statistics"
-            ]),
-            ("MAP TRANSFORMATIONS", [
-                f"{get_key_name(b.get('map_rotate'))}=Rotate map 90° | {get_key_name(b.get('map_flip_h'))}=Flip H | {get_key_name(b.get('map_flip_v'))}=Flip V"
-            ]),
-            ("PROCEDURAL GENERATION", [
-                f"{get_key_name(b.get('random_gen'))}=Cellular Cave | {get_key_name(b.get('perlin_noise'))}=Perlin Noise",
-                f"{get_key_name(b.get('voronoi'))}=Voronoi regions | {get_key_name(b.get('set_seed'))}=Set random seed"
-            ]),
-            ("FILE OPERATIONS", [
-                f"{get_key_name(b.get('new_map'))}=New map | {get_key_name(b.get('load_map'))}=Load | {get_key_name(b.get('save_map'))}=Save",
-                f"{get_key_name(b.get('resize_map'))}=Resize map | {get_key_name(b.get('export_image'))}=Export PNG/CSV"
-            ]),
-            ("MACROS & AUTOMATION", [
-                f"{get_key_name(b.get('macro_record_toggle'))}=Toggle Macro Record | {get_key_name(b.get('macro_play'))}=Play Macro",
-                f"{get_key_name(b.get('toggle_autotile'))}=Toggle Auto-Tiling"
-            ]),
-            ("SYSTEM", [
-                f"{get_key_name(b.get('toggle_snap'))}=Set Snap | {get_key_name(b.get('set_measure'))}=Measure Dist",
-                f"{get_key_name(b.get('editor_menu'))}=Pause Menu (F1) | {get_key_name(b.get('quit'))}=Quit Editor",
-                f"{get_key_name(b.get('show_help'))}=Toggle Help (?) | {get_key_name(b.get('toggle_palette'))}=Toggle Palette",
-                f"{get_key_name(b.get('edit_controls'))}=Edit Controls"
-            ])
-        ]
-        all_lines = ["=== HELP (ESC to close) ==="]
-        for section, lines in help_sections:
-            all_lines.append(f"--- {section} ---")
-            all_lines.extend(lines)
-            all_lines.append("")
-        return all_lines
+        try:
+            b = self.bindings
+            help_sections = [
+                ("MOVEMENT", [
+                    f"View: {get_key_name(b.get('move_view_up'))}/{get_key_name(b.get('move_view_down'))}/{get_key_name(b.get('move_view_left'))}/{get_key_name(b.get('move_view_right'))}",
+                    f"Cursor: Arrow Keys"
+                ]),
+                ("DRAWING TOOLS", [
+                    f"{get_key_name(b.get('place_tile'))}=Place tile | {get_key_name(b.get('cycle_tile'))}=Cycle tiles | {get_key_name(b.get('pick_tile'))}=Pick tile",
+                    f"{get_key_name(b.get('flood_fill'))}=Flood fill | {get_key_name(b.get('line_tool'))}=Line | {get_key_name(b.get('rect_tool'))}=Rectangle",
+                    f"{get_key_name(b.get('circle_tool'))}=Circle | {get_key_name(b.get('pattern_tool'))}=Pattern mode | {get_key_name(b.get('define_pattern'))}=Def Pattern",
+                    f"Brush: {get_key_name(b.get('decrease_brush'))}/{get_key_name(b.get('increase_brush'))} (Size) | {get_key_name(b.get('define_brush'))}=Define shape",
+                    f"{get_key_name(b.get('define_tiles'))}=Define Custom Tiles"
+                ]),
+                ("SELECTION & CLIPBOARD", [
+                    f"{get_key_name(b.get('select_start'))}=Start/End selection | {get_key_name(b.get('clear_selection'))}=Clear",
+                    f"{get_key_name(b.get('copy_selection'))}=Copy | {get_key_name(b.get('paste_selection'))}=Paste",
+                    f"{get_key_name(b.get('rotate_selection'))}=Rotate Sel | {get_key_name(b.get('flip_h'))}=Flip H Sel | {get_key_name(b.get('flip_v'))}=Flip V Sel",
+                    f"{get_key_name(b.get('clear_area'))}=Clear selected area"
+                ]),
+                ("EDIT OPERATIONS", [
+                    f"{get_key_name(b.get('undo'))}=Undo | {get_key_name(b.get('redo'))}=Redo",
+                    f"{get_key_name(b.get('replace_all'))}=Replace all tiles | {get_key_name(b.get('statistics'))}=Show statistics"
+                ]),
+                ("MAP TRANSFORMATIONS", [
+                    f"{get_key_name(b.get('map_rotate'))}=Rotate map 90° | {get_key_name(b.get('map_flip_h'))}=Flip H | {get_key_name(b.get('map_flip_v'))}=Flip V"
+                ]),
+                ("PROCEDURAL GENERATION", [
+                    f"{get_key_name(b.get('random_gen'))}=Cellular Cave | {get_key_name(b.get('perlin_noise'))}=Perlin Noise",
+                    f"{get_key_name(b.get('voronoi'))}=Voronoi regions | {get_key_name(b.get('set_seed'))}=Set random seed"
+                ]),
+                ("FILE OPERATIONS", [
+                    f"{get_key_name(b.get('new_map'))}=New map | {get_key_name(b.get('load_map'))}=Load | {get_key_name(b.get('save_map'))}=Save",
+                    f"{get_key_name(b.get('resize_map'))}=Resize map | {get_key_name(b.get('export_image'))}=Export PNG/CSV"
+                ]),
+                ("MACROS & AUTOMATION", [
+                    f"{get_key_name(b.get('macro_record_toggle'))}=Toggle Macro Record | {get_key_name(b.get('macro_play'))}=Play Macro",
+                    f"{get_key_name(b.get('toggle_autotile'))}=Toggle Auto-Tiling"
+                ]),
+                ("SYSTEM", [
+                    f"{get_key_name(b.get('toggle_snap'))}=Set Snap | {get_key_name(b.get('set_measure'))}=Measure Dist",
+                    f"{get_key_name(b.get('editor_menu'))}=Pause Menu (F1) | {get_key_name(b.get('quit'))}=Quit Editor",
+                    f"{get_key_name(b.get('show_help'))}=Toggle Help (?) | {get_key_name(b.get('toggle_palette'))}=Toggle Palette",
+                    f"{get_key_name(b.get('edit_controls'))}=Edit Controls"
+                ])
+            ]
+            all_lines = ["=== HELP (ESC to close) ==="]
+            for section, lines in help_sections:
+                all_lines.append(f"--- {section} ---")
+                all_lines.extend(lines)
+                all_lines.append("")
+            return all_lines
+        except Exception as e:
+            print(f"ERROR in _generate_help: {e}")
+            return ["Error generating help", str(e), "Check console for details"]
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -269,15 +304,25 @@ class HelpState(State):
     def draw(self, surface):
         overlay_w, overlay_h = self.context.width - 100, self.context.height - 100
         ox, oy = 50, 50
-        pygame.draw.rect(surface, (30, 30, 30, 250), (ox, oy, overlay_w, overlay_h))
-        pygame.draw.rect(surface, (200, 200, 200), (ox, oy, overlay_w, overlay_h), 2)
+        
+        # Proper transparency
+        temp_surface = pygame.Surface((overlay_w, overlay_h), pygame.SRCALPHA)
+        temp_surface.fill((20, 20, 30, 230))
+        surface.blit(temp_surface, (ox, oy))
+        
+        pygame.draw.rect(surface, (0, 255, 255), (ox, oy, overlay_w, overlay_h), 2)
 
         line_h = 24
-        max_lines = (overlay_h - 20) // line_h
+        max_lines = (overlay_h - 40) // line_h
         for i in range(max_lines):
             idx = self.scroll + i
             if idx < len(self.all_lines):
-                surf = self.context.font.render(self.all_lines[idx], True, (255, 255, 255))
+                line_text = self.all_lines[idx]
+                color = (255, 255, 255)
+                if line_text.startswith("---"): color = (255, 255, 0)
+                if line_text.startswith("==="): color = (0, 255, 255)
+                
+                surf = self.context.font.render(line_text, True, color)
                 surface.blit(surf, (ox + 20, oy + 20 + i * line_h))
 
 class FormState(State):
@@ -303,6 +348,8 @@ class FormState(State):
                 elif event.key == pygame.K_ESCAPE:
                     self.is_editing = False
                     pygame.key.stop_text_input()
+                    self.manager.pop()
+                    self.callback(None)
                     return
                 elif event.key == pygame.K_BACKSPACE:
                     self.editing_text = self.editing_text[:-1]
@@ -325,13 +372,16 @@ class FormState(State):
             self.selected = (self.selected + 1) % options_count
             if self.options[self.selected][2] == "spacer":
                 self.selected = (self.selected + 1) % options_count
-        elif event.key == pygame.K_ESCAPE:
+        elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+            self.manager.pop()
             self.callback(None)
         elif event.key == pygame.K_RETURN:
             key = self.options[self.selected][2]
             if key == "apply":
+                self.manager.pop()
                 self.callback({f[2]: f[1] for f in self.fields})
             elif key == "cancel":
+                self.manager.pop()
                 self.callback(None)
             elif key == "spacer":
                 pass

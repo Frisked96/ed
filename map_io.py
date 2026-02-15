@@ -22,7 +22,7 @@ def load_config():
         'define_tiles': 'T', 'save_map': 'g', 'load_map': 'l',
         'export_image': 'x', 'random_gen': '1', 'perlin_noise': '2',
         'voronoi': '3', 'replace_all': 'h', 'clear_area': '0',
-        'statistics': '9', 'show_help': '?', 'edit_controls': 'o',
+        'statistics': '9', 'show_help': ['?', '/'], 'edit_controls': 'o',
         'increase_brush': ']', 'decrease_brush': '[',
         'resize_map': 'R', 'set_seed': 'S',
         'pattern_tool': 'P', 'define_pattern': 'H',
@@ -35,7 +35,11 @@ def load_config():
         'toggle_snap': 'G', 'set_measure': 'N',
         'toggle_palette': 'tab',
         'toggle_autotile': 'A',
+        'zoom_in': ['=', 'mouse 4'], 'zoom_out': ['-', 'mouse 5'],
         'open_context_menu': 'mouse 3',
+        'toggle_measurement': 'f2',
+        'measurement_menu': 'shift f2',
+        'add_measure_point': 'alt mouse 1',
         'quit': 'q',
     }
 

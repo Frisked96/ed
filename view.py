@@ -1,17 +1,26 @@
 import pygame
 import sys
+import time
 from utils import get_key_name, get_distance
 from drawing import get_line_points, get_rect_points, get_circle_points
 from tiles import REGISTRY
 from core import COLOR_MAP
 
 class Renderer:
-    def __init__(self, width=1200, height=800, tile_size=20):
+    def __init__(self, width=None, height=None, tile_size=20):
         pygame.init()
         self.tile_size = tile_size
-        self.width = width
-        self.height = height
-        self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        
+        # Get display info for intelligent defaults
+        display_info = pygame.display.Info()
+        screen_w = display_info.current_w
+        screen_h = display_info.current_h
+        
+        # Use provided dimensions or sensible defaults that fit the screen
+        self.width = width if width is not None else int(screen_w * 0.9)
+        self.height = height if height is not None else int(screen_h * 0.8)
+        
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
         pygame.display.set_caption("Advanced Map Editor")
         
         self.manager = None # Set by Main
@@ -32,7 +41,6 @@ class Renderer:
         REGISTRY.subscribe(self.invalidate_cache)
 
     def add_notification(self, text, duration=2.0, color=(0, 255, 0)):
-        import time
         self.notifications.append({
             "text": text,
             "expiry": time.time() + duration,
@@ -41,7 +49,6 @@ class Renderer:
         })
 
     def draw_notifications(self):
-        import time
         now = time.time()
         # Filter out expired ones
         self.notifications = [n for n in self.notifications if n["expiry"] > now]
@@ -52,8 +59,6 @@ class Renderer:
             alpha = int(min(1.0, time_left / 0.5) * 255) # Fade out in last 0.5s
             
             surf = self.font.render(n["text"], True, n["color"])
-            # Pygame doesn't easily do alpha on rendered text without a temporary surface
-            # but we can at least draw them
             self.screen.blit(surf, (self.width - surf.get_width() - 10, y))
             y += surf.get_height() + 5
 
@@ -162,7 +167,7 @@ class Renderer:
         
         for vy_rel, row in enumerate(visible_data):
             py = (start_vy + vy_rel) * self.tile_size
-            if py >= self.height: break
+            if py >= self.height - 120: break
             for vx_rel, tid in enumerate(row):
                 px = (start_vx + vx_rel) * self.tile_size
                 if px >= self.width: break
@@ -170,9 +175,96 @@ class Renderer:
                 if glyph:
                     self.screen.blit(glyph, (px, py))
         
-        session.status_y = view_h * self.tile_size
+        session.status_y = self.height - 110
         self._draw_tool_preview(session)
+        self._draw_measurement_overlay(session)
         self.draw_notifications()
+
+    def _draw_measurement_overlay(self, session):
+        if not session.tool_state.measurement_active: return
+        
+        cfg = session.tool_state.measurement_config
+        grid_size = int(cfg.get('grid_size', 100))
+        show_coords = cfg.get('show_coords', True)
+        color = cfg.get('color', (0, 255, 255))
+        points = cfg.get('points', [])
+        
+        if grid_size <= 0: return
+
+        cam_x, cam_y = int(session.camera_x), int(session.camera_y)
+        view_w, view_h = int(session.view_width), int(session.view_height)
+        
+        vx0 = max(0, -cam_x) * self.tile_size
+        vy0 = max(0, -cam_y) * self.tile_size
+        vx1 = min(view_w, session.map_obj.width - cam_x) * self.tile_size
+        vy1 = min(view_h, session.map_obj.height - cam_y) * self.tile_size
+
+        start_x = (cam_x // grid_size) * grid_size
+        start_y = (cam_y // grid_size) * grid_size
+        end_x = cam_x + view_w
+        end_y = cam_y + view_h
+        
+        end_x = min(end_x, session.map_obj.width)
+        end_y = min(end_y, session.map_obj.height)
+
+        # Performance guard: Don't render too many labels
+        pixel_grid = grid_size * self.tile_size
+        render_labels = show_coords and (pixel_grid > 20)
+
+        for x in range(int(start_x), int(end_x) + 1, grid_size):
+            if x < cam_x or x > end_x: continue
+            px = (x - cam_x) * self.tile_size
+            pygame.draw.line(self.screen, color, (int(px), int(vy0)), (int(px), int(vy1)), 2)
+            if render_labels:
+                 surf = self.font.render(f"X:{x}", True, color)
+                 self.screen.blit(surf, (int(px) + 4, int(vy0) + 5))
+
+        for y in range(int(start_y), int(end_y) + 1, grid_size):
+            if y < cam_y or y > end_y: continue
+            py = (y - cam_y) * self.tile_size
+            pygame.draw.line(self.screen, color, (int(vx0), int(py)), (int(vx1), int(py)), 2)
+            if render_labels:
+                 surf = self.font.render(f"Y:{y}", True, color)
+                 self.screen.blit(surf, (int(vx0) + 5, int(py) + 4))
+
+        if points:
+            last_p = None
+            for p in points:
+                px = (p[0] - cam_x) * self.tile_size + self.tile_size // 2
+                py = (p[1] - cam_y) * self.tile_size + self.tile_size // 2
+                
+                if 0 <= px <= self.width and 0 <= py <= self.height - 120:
+                    pygame.draw.circle(self.screen, (255, 100, 100), (int(px), int(py)), 5)
+                    
+                    if last_p:
+                        lpx = (last_p[0] - cam_x) * self.tile_size + self.tile_size // 2
+                        lpy = (last_p[1] - cam_y) * self.tile_size + self.tile_size // 2
+                        pygame.draw.line(self.screen, (255, 100, 100), (int(lpx), int(lpy)), (int(px), int(py)), 2)
+                        
+                        dist = get_distance(last_p, p)
+                        mid_x, mid_y = (lpx + px) // 2, (lpy + py) // 2
+                        if 0 <= mid_x <= self.width and 0 <= mid_y <= self.height - 120:
+                            d_surf = self.font.render(f"{dist:.1f}", True, (255, 200, 200))
+                            self.screen.blit(d_surf, (int(mid_x), int(mid_y)))
+                last_p = p
+
+        # Live Sector Info
+        sec_x = session.cursor_x // grid_size
+        sec_y = session.cursor_y // grid_size
+        rel_x = session.cursor_x % grid_size
+        rel_y = session.cursor_y % grid_size
+        
+        info_lines = [
+            f"SECTOR: {sec_x}, {sec_y}",
+            f"LOCAL:  {rel_x}, {rel_y}",
+            f"TOTAL:  {session.cursor_x}, {session.cursor_y}"
+        ]
+        
+        y_off = self.height - 180
+        for line in info_lines:
+            surf = self.font.render(line, True, color)
+            self.screen.blit(surf, (self.width - surf.get_width() - 10, y_off))
+            y_off += 22
 
     def _draw_tool_preview(self, session):
         ts = session.tool_state

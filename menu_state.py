@@ -1,7 +1,7 @@
 import pygame
 import sys
 from state_engine import State
-from core import EditorSession, DEFAULT_VIEW_WIDTH, DEFAULT_VIEW_HEIGHT
+from core import EditorSession
 from map_io import load_config
 from editor_state import EditorState
 from menu import (
@@ -44,11 +44,14 @@ class MainMenuState(State):
         # We don't need to flip, StateManager does it
 
     def handle_event(self, event):
+        vw = self.renderer.width // self.renderer.tile_size
+        vh = (self.renderer.height - 120) // self.renderer.tile_size
+        
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
-                self.manager.push(NewMapState(self.manager, self.renderer, DEFAULT_VIEW_WIDTH, DEFAULT_VIEW_HEIGHT, self.start_editor))
+                self.manager.push(NewMapState(self.manager, self.renderer, vw, vh, self.start_editor))
             elif event.key == pygame.K_2:
-                self.manager.push(LoadMapState(self.manager, self.renderer, DEFAULT_VIEW_WIDTH, DEFAULT_VIEW_HEIGHT, self.start_editor))
+                self.manager.push(LoadMapState(self.manager, self.renderer, vw, vh, self.start_editor))
             elif event.key == pygame.K_3:
                 self.manager.push(TileRegistryState(self.manager, self.renderer))
             elif event.key == pygame.K_4:
@@ -67,10 +70,14 @@ class MainMenuState(State):
     def start_editor(self, map_obj):
         if map_obj is None:
             return
+        
+        vw = self.renderer.width // self.renderer.tile_size
+        vh = (self.renderer.height - 120) // self.renderer.tile_size
+        
         session = EditorSession(
             map_obj, 
-            DEFAULT_VIEW_WIDTH, 
-            DEFAULT_VIEW_HEIGHT, 
+            vw, 
+            vh, 
             self.bindings, 
             macros=self.macros, 
             tiling_rules=self.tiling_rules

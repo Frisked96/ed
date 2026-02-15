@@ -130,3 +130,98 @@ def voronoi_generation(map_obj, tile_ids, num_points=20, seed=None):
     map_obj.dirty = True
     
     return seed
+
+
+def apply_cellular_automata_region(map_obj, x_range, y_range, target_tiles, floor_tile, wall_tile, iterations=4, birth_limit=4, death_limit=3, mode='classic'):
+    """
+    Apply CA to a specific region of the map.
+    mode: 'classic' (random init) or 'existing' (use current map)
+    """
+    x0, x1 = x_range
+    y0, y1 = y_range
+    w = x1 - x0
+    h = y1 - y0
+    if w <= 0 or h <= 0: return
+
+    sub_map = map_obj.data[y0:y1, x0:x1]
+    
+    if mode == 'existing':
+        # Grid: 1 where it matches target_tiles, 0 otherwise
+        # If target_tiles is empty, maybe default to non-floor? 
+        # But for 'existing' mode, we usually want specific tiles to be 'alive'.
+        if not target_tiles:
+            # Fallback: Treat non-floor as alive if no targets specified
+            grid = (sub_map != floor_tile).astype(np.uint8)
+        else:
+            grid = np.isin(sub_map, target_tiles).astype(np.uint8)
+    else:
+        # Classic: Random initialization
+        rng = np.random.default_rng()
+        grid = (rng.random((h, w)) < 0.45).astype(np.uint8)
+
+    kernel = np.array([[1,1,1],[1,0,1],[1,1,1]], dtype=np.uint8)
+    
+    for _ in range(iterations):
+        neighbors = convolve2d(grid, kernel, mode='same', boundary='symm')
+        
+        mask_survive = (grid == 1) & (neighbors >= death_limit)
+        mask_birth = (grid == 0) & (neighbors >= birth_limit)
+        
+        new_grid = np.zeros_like(grid)
+        new_grid[mask_survive | mask_birth] = 1
+        grid = new_grid
+        
+    output = np.full_like(sub_map, floor_tile)
+    output[grid == 1] = wall_tile
+    
+    map_obj.push_undo()
+    map_obj.data[y0:y1, x0:x1] = output
+    map_obj.dirty = True
+
+def apply_weighted_noise_region(map_obj, x_range, y_range, weights: dict):
+    x0, x1 = x_range
+    y0, y1 = y_range
+    w = x1 - x0
+    h = y1 - y0
+    if w <= 0 or h <= 0: return
+
+    tiles = np.array(list(weights.keys()))
+    probs = np.array(list(weights.values()), dtype=np.float64)
+    if probs.sum() == 0: return
+    probs /= probs.sum()
+    
+    choices = np.random.choice(tiles, size=(h, w), p=probs).astype(np.uint16)
+    
+    map_obj.push_undo()
+    map_obj.data[y0:y1, x0:x1] = choices
+    map_obj.dirty = True
+
+def apply_shuffle_region(map_obj, x_range, y_range, target_tiles=None):
+    x0, x1 = x_range
+    y0, y1 = y_range
+    w = x1 - x0
+    h = y1 - y0
+    if w <= 0 or h <= 0: return
+
+    sub_map = map_obj.data[y0:y1, x0:x1]
+    
+    if target_tiles:
+        # Only shuffle specific tiles amongst themselves
+        mask = np.isin(sub_map, target_tiles)
+        values = sub_map[mask]
+        np.random.shuffle(values)
+        
+        # Write back
+        new_sub = sub_map.copy()
+        new_sub[mask] = values
+        
+        map_obj.push_undo()
+        map_obj.data[y0:y1, x0:x1] = new_sub
+    else:
+        # Shuffle everything
+        flat = sub_map.flatten()
+        np.random.shuffle(flat)
+        map_obj.push_undo()
+        map_obj.data[y0:y1, x0:x1] = flat.reshape((h, w))
+        
+    map_obj.dirty = True

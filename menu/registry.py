@@ -22,6 +22,7 @@ class TileRegistryState(State):
         self.context = context
         self.machine = TileRegistryMachine()
         self.selected_idx = 0
+        self.scroll_offset = 0
         self.form_selected = 0
         self.fields = []
         self.all_tiles = []
@@ -35,11 +36,22 @@ class TileRegistryState(State):
         self.all_tiles = REGISTRY.get_all()
         if not self.all_tiles: self.selected_idx = 0
         else: self.selected_idx = min(self.selected_idx, len(self.all_tiles)-1)
+        self._ensure_selection_visible()
+
+    def _ensure_selection_visible(self):
+        if not self.all_tiles: return
+        row_height = self.context.tile_size + 15
+        available_height = self.context.height - 120
+        rows_per_page = available_height // row_height
+        
+        if self.selected_idx < self.scroll_offset:
+            self.scroll_offset = self.selected_idx
+        elif self.selected_idx >= self.scroll_offset + rows_per_page:
+            self.scroll_offset = self.selected_idx - rows_per_page + 1
 
     def handle_event(self, event):
-        if event.type != pygame.KEYDOWN: return
-
         if self.machine.current_state == TileRegistryMachine.browsing:
+            if event.type != pygame.KEYDOWN: return
             self._handle_browsing(event)
         elif self.machine.current_state in [TileRegistryMachine.adding, TileRegistryMachine.editing]:
             self._handle_form(event)
@@ -47,8 +59,10 @@ class TileRegistryState(State):
     def _handle_browsing(self, event):
         if event.key == pygame.K_UP:
             self.selected_idx = (self.selected_idx - 1) % len(self.all_tiles) if self.all_tiles else 0
+            self._ensure_selection_visible()
         elif event.key == pygame.K_DOWN:
             self.selected_idx = (self.selected_idx + 1) % len(self.all_tiles) if self.all_tiles else 0
+            self._ensure_selection_visible()
         elif event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
             self.manager.pop()
         elif event.key == pygame.K_a:
@@ -143,8 +157,14 @@ class TileRegistryState(State):
         title = font.render("=== TILE REGISTRY ===", True, (0, 255, 255))
         self.context.screen.blit(title, (20, 20))
         
+        row_height = tile_size + 15
+        available_height = self.context.height - 120
+        rows_per_page = available_height // row_height
+        
         y = 70
-        for i, t in enumerate(self.all_tiles):
+        visible_tiles = self.all_tiles[self.scroll_offset : self.scroll_offset + rows_per_page]
+        for idx_rel, t in enumerate(visible_tiles):
+            i = self.scroll_offset + idx_rel
             color = (255, 255, 255)
             if i == self.selected_idx:
                 pygame.draw.rect(self.context.screen, (60, 60, 60), (0, y - 2, self.context.width, tile_size + 10))
@@ -158,7 +178,7 @@ class TileRegistryState(State):
             self.context.screen.blit(char_surf, (30, y))
             self.context.screen.blit(name_surf, (100, y))
             self.context.screen.blit(color_surf, (400, y))
-            y += tile_size + 15
+            y += row_height
             
         help_text = font.render("[A] Add New | [E] Edit | [Del] Delete | [Q] Back", True, (0, 255, 0))
         self.context.screen.blit(help_text, (20, self.context.height - 40))

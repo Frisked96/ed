@@ -86,11 +86,11 @@ def handle_move_view(session, context, action=None):
     if action == 'move_view_up':
         session.camera_y = max(0, session.camera_y - 1)
     elif action == 'move_view_down':
-        session.camera_y = min(session.map_obj.height - session.view_height, session.camera_y + 1)
+        session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.camera_y + 1))
     elif action == 'move_view_left':
         session.camera_x = max(0, session.camera_x - 1)
     elif action == 'move_view_right':
-        session.camera_x = min(session.map_obj.width - session.view_width, session.camera_x + 1)
+        session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.camera_x + 1))
 
 def handle_move_cursor(session, context, action=None):
     snap = session.tool_state.snap_size
@@ -107,11 +107,12 @@ def handle_move_cursor(session, context, action=None):
     if session.cursor_x < session.camera_x:
         session.camera_x = session.cursor_x
     if session.cursor_x >= session.camera_x + session.view_width:
-        session.camera_x = session.cursor_x - session.view_width + 1
+        session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.cursor_x - session.view_width + 1))
+    
     if session.cursor_y < session.camera_y:
         session.camera_y = session.cursor_y
     if session.cursor_y >= session.camera_y + session.view_height:
-        session.camera_y = session.cursor_y - session.view_height + 1
+        session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.cursor_y - session.view_height + 1))
 
 def handle_place_tile(session, context, action=None):
     ts = session.tool_state
@@ -467,60 +468,130 @@ def handle_macro_play(session, context, action=None):
 
 def handle_open_context_menu(session, context, action=None):
     from menu.base import ContextMenuState
+    from menu.generation import AdvancedGenerationState
     
     mouse_pos = pygame.mouse.get_pos()
     
     def on_flood_fill():
-        # Flood fill uses cursor position, which is updated by mouse motion
         handle_flood_fill(session, context, 'flood_fill')
-
-    def on_pick_tile_at_cursor():
-        # Pick the tile currently under the cursor
-        tid = session.map_obj.get(session.cursor_x, session.cursor_y)
-        if tid:
-            session.selected_tile_id = tid
-            show_message(context, f"Picked tile ID {tid}", notify=True)
 
     def set_tool(mode):
         session.tool_state.mode = mode
         session.tool_state.start_point = None
         show_message(context, f"Switched to {mode.capitalize()} Tool", notify=True)
 
-    def toggle_fill_mode():
-        modes = ['ask', 'fill', 'outline']
-        curr = session.tool_state.shape_fill_mode
-        idx = modes.index(curr) if curr in modes else 0
-        next_mode = modes[(idx + 1) % len(modes)]
-        session.tool_state.shape_fill_mode = next_mode
-        show_message(context, f"Shape Fill: {next_mode.upper()}", notify=True)
+    has_selection = session.selection_start is not None and session.selection_end is not None
 
-    options = [
-        ("Point Tool", lambda: set_tool('place')),
-        ("Line Tool", lambda: set_tool('line')),
-        ("Rect Tool", lambda: set_tool('rect')),
-        ("Circle Tool", lambda: set_tool('circle')),
-        ("Select Tool", lambda: set_tool('select')),
-        ("Flood Fill", on_flood_fill),
-        ("Pick Tile", on_pick_tile_at_cursor),
-        ("Toggle Fill Mode", toggle_fill_mode),
-        ("Toggle Palette", lambda: handle_toggle_palette(session, context)),
-        ("Undo", lambda: handle_undo_redo(session, context, 'undo')),
-        ("Redo", lambda: handle_undo_redo(session, context, 'redo')),
-        ("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')),
-        ("Paste Selection", lambda: handle_selection(session, context, 'paste_selection')),
-        ("Rotate Selection", lambda: handle_rotate_selection_action(session, context)),
-        ("Clear Selection", lambda: handle_selection(session, context, 'clear_selection')),
-        ("Clear Area", lambda: handle_selection(session, context, 'clear_area')),
-        ("Save Map", lambda: handle_file_ops(session, context, 'save_map')),
-    ]
+    if has_selection:
+        options = [
+            ("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')),
+            ("Rotate Selection", lambda: handle_rotate_selection_action(session, context)),
+            ("Clear Area", lambda: handle_selection(session, context, 'clear_area')),
+            ("Advanced Gen", lambda: context.manager.push(AdvancedGenerationState(context.manager, context, session))),
+            ("Deselect", lambda: handle_selection(session, context, 'clear_selection')),
+            ("---", None),
+            ("Point Tool", lambda: set_tool('place')),
+        ]
+    else:
+        options = [
+            ("Point Tool", lambda: set_tool('place')),
+            ("Line Tool", lambda: set_tool('line')),
+            ("Rect Tool", lambda: set_tool('rect')),
+            ("Circle Tool", lambda: set_tool('circle')),
+            ("Select Tool", lambda: set_tool('select')),
+            ("Flood Fill", on_flood_fill),
+            ("---", None),
+            ("Toggle Measurement", lambda: handle_measurement_toggle(session, context)),
+            ("Measurement Settings", lambda: handle_measurement_configure(session, context)),
+            ("---", None),
+            ("Pick Tile", lambda: handle_tile_management(session, context, 'pick_tile')),
+            ("Toggle Palette", lambda: handle_toggle_palette(session, context)),
+            ("Undo", lambda: handle_undo_redo(session, context, 'undo')),
+            ("Redo", lambda: handle_undo_redo(session, context, 'redo')),
+            ("Save Map", lambda: handle_file_ops(session, context, 'save_map')),
+        ]
 
     context.manager.push(ContextMenuState(context.manager, context, options, mouse_pos))
+
+def handle_zoom(session, context, action=None):
+    old_ts = context.tile_size
+    if action == 'zoom_in':
+        context.tile_size = min(100, context.tile_size + 2)
+    elif action == 'zoom_out':
+        context.tile_size = max(4, context.tile_size - 2)
+    
+    if old_ts != context.tile_size:
+        # Recalculate view width and height based on new tile size and FIXED viewport pixel area
+        session.view_width = session.viewport_px_w // context.tile_size
+        session.view_height = session.viewport_px_h // context.tile_size
+        
+        # Ensure camera and cursor remain valid
+        session.camera_x = max(0, min(session.camera_x, session.map_obj.width - session.view_width))
+        session.camera_y = max(0, min(session.camera_y, session.map_obj.height - session.view_height))
+        
+        context.invalidate_cache()
+        show_message(context, f"Zoom: {context.tile_size}px", notify=True)
+
+def handle_measurement_toggle(session, context, action=None):
+    session.tool_state.measurement_active = not session.tool_state.measurement_active
+    status = "ON" if session.tool_state.measurement_active else "OFF"
+    show_message(context, f"Measurement Mode: {status}", notify=True)
+
+def handle_add_measurement_point(session, context, action=None):
+    ts = session.tool_state
+    if not ts.measurement_active: return
+    
+    ts.measurement_config['points'].append((session.cursor_x, session.cursor_y))
+    if len(ts.measurement_config['points']) > 10:
+        ts.measurement_config['points'].pop(0)
+    show_message(context, f"Point added: {session.cursor_x}, {session.cursor_y}", notify=True)
+
+def handle_measurement_configure(session, context, action=None):
+    ts = session.tool_state
+    
+    # Prepare fields for FormState
+    color = ts.measurement_config.get('color', (0, 255, 255))
+    color_str = f"{color[0]},{color[1]},{color[2]}"
+
+    fields = [
+        ["Grid Size", str(ts.measurement_config.get('grid_size', 100)), 'grid_size'],
+        ["Show Coords", str(ts.measurement_config.get('show_coords', True)), 'show_coords'],
+        ["Grid Color (R,G,B)", color_str, 'color'],
+        ["Clear Points (y/n)", "n", 'clear_points']
+    ]
+    
+    def on_save(data):
+        if data:
+            try:
+                val = int(data.get('grid_size', 100))
+                if val > 0: ts.measurement_config['grid_size'] = val
+            except: pass
+            
+            sc_str = str(data.get('show_coords', 'True')).lower()
+            ts.measurement_config['show_coords'] = (sc_str == 'true')
+            
+            # Color parsing
+            try:
+                c_str = data.get('color', '0,255,255')
+                parts = [int(p.strip()) for p in c_str.split(',')]
+                if len(parts) >= 3:
+                    ts.measurement_config['color'] = (parts[0], parts[1], parts[2])
+            except: pass
+
+            if str(data.get('clear_points', 'n')).lower() == 'y':
+                ts.measurement_config['points'] = []
+            
+            show_message(context, "Measurement Config Saved", notify=True)
+            
+    from menu.base import FormState
+    context.manager.push(FormState(context.manager, context, "Measurement Settings", fields, on_save))
 
 def get_action_dispatcher():
     return {
         'quit': handle_quit,
         'editor_menu': handle_editor_menu,
         'open_context_menu': handle_open_context_menu,
+        'zoom_in': handle_zoom, 'zoom_out': handle_zoom,
         'move_view_up': handle_move_view, 'move_view_down': handle_move_view,
         'move_view_left': handle_move_view, 'move_view_right': handle_move_view,
         'move_cursor_up': handle_move_cursor, 'move_cursor_down': handle_move_cursor,
@@ -552,4 +623,7 @@ def get_action_dispatcher():
         'new_map': handle_file_ops, 'export_image': handle_file_ops,
         'macro_record_toggle': handle_macro_toggle,
         'macro_play': handle_macro_play,
+        'toggle_measurement': handle_measurement_toggle,
+        'measurement_menu': handle_measurement_configure,
+        'add_measure_point': handle_add_measurement_point,
     }

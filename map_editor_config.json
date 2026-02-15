@@ -34,7 +34,7 @@
   "replace_all": "h",
   "clear_area": "0",
   "statistics": "9",
-  "show_help": "?",
+  "show_help": ["?", "/"],
   "edit_controls": "o",
   "increase_brush": "]",
   "decrease_brush": "[",

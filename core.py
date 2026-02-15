@@ -4,9 +4,6 @@ import numpy as np
 from collections import deque
 from tiles import REGISTRY, TileDefinition
 
-DEFAULT_VIEW_WIDTH = 60
-DEFAULT_VIEW_HEIGHT = 30
-
 # RGB Color Map
 COLOR_MAP = {
     'black': (0, 0, 0),
@@ -111,6 +108,13 @@ class ToolState:
         self.macros = macros if macros is not None else {}
         self.snap_size = 1
         self.measure_start = None
+        self.measurement_active = False
+        self.measurement_config = {
+            'grid_size': 100, 
+            'show_coords': True, 
+            'color': (0, 255, 255),
+            'points': [] # List of (x, y)
+        }
         self.show_palette = False
         self.auto_tiling = False
         self.tiling_rules = tiling_rules if tiling_rules is not None else {}
@@ -129,6 +133,11 @@ class EditorSession:
         self.map_obj = map_obj
         self.view_width = view_width
         self.view_height = view_height
+        
+        # Fixed pixel dimensions for the viewport area
+        self.viewport_px_w = 0 
+        self.viewport_px_h = 0
+        
         self.bindings = bindings
         
         self.undo_stack = UndoStack()

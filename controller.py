@@ -38,15 +38,26 @@ class InputHandler:
             else: ts.mode = 'place'
             return
 
-        # 1. Try specific unicode character mapping first (case-sensitive)
-        actions = []
-        if unicode_char and unicode_char in self.session.key_map:
+        # 1. Try modified key name (e.g., 'shift f2')
+        mods = pygame.key.get_mods()
+        key_parts = []
+        if mods & pygame.KMOD_SHIFT: key_parts.append('shift')
+        if mods & pygame.KMOD_CTRL: key_parts.append('ctrl')
+        if mods & pygame.KMOD_ALT: key_parts.append('alt')
+        
+        base_key_name = pygame.key.name(key).lower()
+        key_parts.append(base_key_name)
+        full_key_name = " ".join(key_parts)
+        
+        actions = self.session.key_map.get(full_key_name, [])
+
+        # 2. Try specific unicode character mapping (case-sensitive)
+        if not actions and unicode_char and unicode_char in self.session.key_map:
             actions = self.session.key_map[unicode_char]
         
-        # 2. Fallback to physical key name if no specific unicode mapping found
+        # 3. Fallback to physical base key name
         if not actions:
-            key_name = pygame.key.name(key).lower()
-            actions = self.session.key_map.get(key_name, [])
+            actions = self.session.key_map.get(base_key_name, [])
 
         for action in actions:
             # Prevent key repeat for place_tile unless in 'place' mode (painting)
@@ -55,11 +66,22 @@ class InputHandler:
             self.dispatch(action, renderer)
 
     def process_mouse(self, button, renderer):
-        # Map mouse button index to string identifier
-        key_name = f"mouse {button}"
+        # Check modifiers
+        mods = pygame.key.get_mods()
+        key_parts = []
+        if mods & pygame.KMOD_SHIFT: key_parts.append('shift')
+        if mods & pygame.KMOD_CTRL: key_parts.append('ctrl')
+        if mods & pygame.KMOD_ALT: key_parts.append('alt')
+        key_parts.append(f"mouse {button}")
         
-        # Look up actions for this mouse button
-        actions = self.session.key_map.get(key_name, [])
+        full_key_name = " ".join(key_parts)
+        
+        # Try with modifiers first
+        actions = self.session.key_map.get(full_key_name, [])
+        
+        # Fallback to base button if no modified action found
+        if not actions:
+            actions = self.session.key_map.get(f"mouse {button}", [])
         
         for action in actions:
             self.dispatch(action, renderer)

@@ -1,79 +1,120 @@
 import os
 import json
-import curses
+import pygame
 import numpy as np
-from PIL import Image
+from tiles import REGISTRY
+from core import COLOR_MAP
 
 def load_config():
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
+    # Default bindings now use string names for all keys
     default_bindings = {
-        'move_view_up': ord('w'), 'move_view_down': ord('s'),
-        'move_view_left': ord('a'), 'move_view_right': ord('d'),
-        'move_cursor_up': curses.KEY_UP, 'move_cursor_down': curses.KEY_DOWN,
-        'move_cursor_left': curses.KEY_LEFT, 'move_cursor_right': curses.KEY_RIGHT,
-        'place_tile': ord('e'), 'cycle_tile': ord('c'), 'pick_tile': ord('t'),
-        'flood_fill': ord('f'), 'line_tool': ord('i'), 'rect_tool': ord('r'),
-        'circle_tool': ord('b'), 'select_start': ord('v'), 'clear_selection': ord('V'),
-        'copy_selection': ord('y'),
-        'paste_selection': ord('p'), 'rotate_selection': ord('m'), 'flip_h': ord('j'),
-        'flip_v': ord('k'), 'undo': ord('u'), 'redo': ord('z'), 'new_map': ord('n'),
-        'define_tiles': ord('T'), 'save_map': ord('g'), 'load_map': ord('l'),
-        'export_image': ord('x'), 'random_gen': ord('1'), 'perlin_noise': ord('2'),
-        'voronoi': ord('3'), 'replace_all': ord('h'), 'clear_area': ord('0'),
-        'statistics': ord('9'), 'show_help': ord('?'), 'edit_controls': ord('o'),
-        'increase_brush': ord(']'), 'decrease_brush': ord('['),
-        'resize_map': ord('R'), 'set_seed': ord('S'),
-        'pattern_tool': ord('P'), 'define_pattern': ord('H'),
-        'define_brush': ord('B'),
-        'map_rotate': ord('M'), 'map_flip_h': ord('J'), 'map_flip_v': ord('K'),
-        'map_shift_up': -1, 'map_shift_down': -1,
-        'map_shift_left': -1, 'map_shift_right': -1,
-        'macro_record_toggle': ord('('), 'macro_play': ord(')'),
-        'editor_menu': curses.KEY_F1,
-        'toggle_snap': ord('G'), 'set_measure': ord('N'),
-        'toggle_palette': 9,
-        'toggle_autotile': ord('A'),
-        'quit': ord('q'),
+        'move_view_up': 'w', 'move_view_down': 's',
+        'move_view_left': 'a', 'move_view_right': 'd',
+        'move_cursor_up': 'up', 'move_cursor_down': 'down',
+        'move_cursor_left': 'left', 'move_cursor_right': 'right',
+        'place_tile': ['e', 'mouse 1', 'space'], 'cycle_tile': 'c', 'pick_tile': 't',
+        'flood_fill': 'f', 'line_tool': 'i', 'rect_tool': 'r',
+        'circle_tool': 'b', 'select_start': 'v', 'clear_selection': 'V',
+        'copy_selection': 'y',
+        'paste_selection': 'p', 'rotate_selection': 'm', 'flip_h': 'j',
+        'flip_v': 'k', 'undo': 'u', 'redo': 'z', 'new_map': 'n',
+        'define_tiles': 'T', 'save_map': 'g', 'load_map': 'l',
+        'goto_coords': ';',
+        'export_image': 'x', 'random_gen': '1', 'perlin_noise': '2',
+        'voronoi': '3', 'replace_all': 'h', 'clear_area': '0',
+        'statistics': '9', 'show_help': ['?', '/'], 'edit_controls': 'o',
+        'increase_brush': ']', 'decrease_brush': '[',
+        'resize_map': 'R', 'set_seed': 'S',
+        'pattern_tool': 'P', 'define_pattern': 'H',
+        'define_brush': 'B',
+        'map_rotate': 'M', 'map_flip_h': 'J', 'map_flip_v': 'K',
+        'map_shift_up': 'None', 'map_shift_down': 'None',
+        'map_shift_left': 'None', 'map_shift_right': 'None',
+        'macro_record_toggle': '(', 'macro_play': ')',
+        'editor_menu': 'f1',
+        'toggle_snap': 'G', 'set_measure': 'N',
+        'toggle_palette': 'tab',
+        'toggle_autotile': 'A',
+        'zoom_in': ['=', 'mouse 4'], 'zoom_out': ['-', 'mouse 5'],
+        'open_context_menu': 'mouse 3',
+        'toggle_measurement': 'f2',
+        'measurement_menu': 'shift f2',
+        'add_measure_point': 'alt mouse 1',
+        'quit': 'q',
     }
+
     if os.path.exists(config_path):
         try:
             with open(config_path, 'r') as f:
                 loaded = json.load(f)
                 default_bindings.update(loaded)
-        except: pass
+        except Exception as e: 
+            print(f"Error loading config: {e}")
+            pass
     return default_bindings
 
 def save_config(bindings):
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
+    # Save config with string keys
     try:
         with open(config_path, 'w') as f:
             json.dump(bindings, f, indent=2)
     except: pass
 
-def export_to_image(map_data, tile_colors, filename, tile_size=8):
+def load_tiles():
+    tiles_path = os.path.join(os.getcwd(), 'custom_tiles.json')
+    if not os.path.exists(tiles_path):
+        return []
+    try:
+        with open(tiles_path, 'r') as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_tiles(tile_definitions):
+    tiles_path = os.path.join(os.getcwd(), 'custom_tiles.json')
+    try:
+        # tile_definitions should be a list of dicts from TileDefinition.dict()
+        with open(tiles_path, 'w') as f:
+            json.dump(tile_definitions, f, indent=2)
+    except Exception as e:
+        print(f"Error saving tiles: {e}")
+
+def export_to_image(map_data, _tile_colors, filename, tile_size=8):
+    from PIL import Image
     height, width = map_data.shape
 
-    color_lookup = {
-        curses.COLOR_BLACK: (0, 0, 0),
-        curses.COLOR_RED: (255, 0, 0),
-        curses.COLOR_GREEN: (0, 255, 0),
-        curses.COLOR_YELLOW: (255, 255, 0),
-        curses.COLOR_BLUE: (0, 0, 255),
-        curses.COLOR_MAGENTA: (255, 0, 255),
-        curses.COLOR_CYAN: (0, 255, 255),
-        curses.COLOR_WHITE: (255, 255, 255),
-    }
-
-    # Create an RGB array for the map
     rgb_map = np.zeros((height, width, 3), dtype=np.uint8)
     
-    unique_chars = np.unique(map_data)
-    for ch in unique_chars:
-        color = color_lookup.get(tile_colors.get(ch, curses.COLOR_WHITE), (255, 255, 255))
-        rgb_map[map_data == ch] = color
+    unique_ids = np.unique(map_data)
+    for tid in unique_ids:
+        tile = REGISTRY.get(tid)
+        color = (0, 0, 0)
+        if tile:
+            c = tile.color
+            if isinstance(c, str):
+                color = COLOR_MAP.get(c.lower(), (255, 255, 255))
+            else:
+                color = c
+        
+        rgb_map[map_data == tid] = color
 
     img = Image.fromarray(rgb_map, 'RGB')
     if tile_size != 1:
         img = img.resize((width * tile_size, height * tile_size), Image.NEAREST)
     
     img.save(filename)
+
+def autosave_map(map_obj, filename):
+    try:
+        with open(filename, 'w') as f:
+            for row in map_obj.data:
+                line_chars = []
+                for tid in row:
+                    t = REGISTRY.get(tid)
+                    line_chars.append(t.char if t else ' ')
+                f.write(''.join(line_chars) + '\n')
+        return True
+    except:
+        return False

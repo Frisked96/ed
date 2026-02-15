@@ -38,6 +38,7 @@ def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_s
             # Faster bulk set if no autotiling
             map_obj.data[y0:y1, x0:x1] = tile_id
             map_obj.dirty = True
+            map_obj.trigger_full_update()
 
 def flood_fill(map_obj, x, y, new_tile_id):
     old_tile_id = map_obj.get(x, y)
@@ -108,6 +109,7 @@ def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush
         x0_f, x1_f = max(0, min_x), min(map_obj.width, max_x + 1)
         map_obj.data[y0_f:y1_f, x0_f:x1_f] = tile_id
         map_obj.dirty = True
+        map_obj.trigger_full_update()
     else:
         for x, y in get_rect_points(x0, y0, x1, y1, filled=False):
             place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
@@ -151,6 +153,7 @@ def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_sh
         mask = dist_sq <= radius**2
         map_obj.data[y0:y1, x0:x1][mask] = tile_id
         map_obj.dirty = True
+        map_obj.trigger_full_update()
     else:
         for x, y in get_circle_points(cx, cy, radius, filled=False):
             place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)

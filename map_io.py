@@ -20,6 +20,7 @@ def load_config():
         'paste_selection': 'p', 'rotate_selection': 'm', 'flip_h': 'j',
         'flip_v': 'k', 'undo': 'u', 'redo': 'z', 'new_map': 'n',
         'define_tiles': 'T', 'save_map': 'g', 'load_map': 'l',
+        'goto_coords': ';',
         'export_image': 'x', 'random_gen': '1', 'perlin_noise': '2',
         'voronoi': '3', 'replace_all': 'h', 'clear_area': '0',
         'statistics': '9', 'show_help': ['?', '/'], 'edit_controls': 'o',

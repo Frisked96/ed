@@ -53,6 +53,7 @@
   "macro_record_toggle": "(",
   "macro_play": ")",
   "editor_menu": "f1",
+  "open_context_menu": "mouse 3",
   "toggle_snap": "G",
   "set_measure": "N",
   "toggle_palette": "tab",

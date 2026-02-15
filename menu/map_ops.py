@@ -16,7 +16,6 @@ class NewMapState(FormState):
         
         def on_submit(res):
             if not res:
-                self.manager.pop()
                 callback(None)
                 return
             
@@ -34,11 +33,9 @@ class NewMapState(FormState):
                         for y in range(h):
                             map_obj.set(0, y, tid); map_obj.set(w-1, y, tid)
                 
-                self.manager.pop()
                 callback(map_obj)
             except Exception as e:
                 print(f"Error creating map: {e}")
-                self.manager.pop()
                 callback(None)
 
         super().__init__(manager, context, "NEW MAP SETTINGS", fields, on_submit)
@@ -65,11 +62,9 @@ class LoadMapState(State):
                         for y, line in enumerate(lines):
                             for x, ch in enumerate(line):
                                 m.set(x, y, REGISTRY.get_by_char(ch))
-                        self.manager.pop()
                         self.callback(m)
                         return
                 except: pass
-            self.manager.pop()
             self.callback(None)
 
         self.manager.push(TextInputState(self.manager, self.context, "Load map from: ", on_filename))
@@ -86,7 +81,6 @@ class ExportMapState(State):
     def enter(self, **kwargs):
         def on_filename(filename):
             if not filename:
-                self.manager.pop()
                 return
             
             if not filename.endswith('.png') and not filename.endswith('.csv'):
@@ -98,7 +92,6 @@ class ExportMapState(State):
                     try:
                         export_to_image(self.map_obj.data, {}, filename, tile_size)
                     except Exception as e: print(e)
-                    self.manager.pop()
                 self.manager.push(TextInputState(self.manager, self.context, "Tile size (default 8): ", on_ts))
             elif filename.endswith('.csv'):
                 try:
@@ -106,7 +99,6 @@ class ExportMapState(State):
                         for row in self.map_obj.data:
                             f.write(','.join(map(str, row)) + '\n')
                 except Exception as e: print(e)
-                self.manager.pop()
         
         self.manager.push(TextInputState(self.manager, self.context, "Export as (.png/.csv): ", on_filename))
 
@@ -125,7 +117,6 @@ class ResizeMapState(FormState):
 
         def on_submit(res):
             if not res:
-                self.manager.pop()
                 callback(None)
                 return
             
@@ -139,11 +130,9 @@ class ResizeMapState(FormState):
                 new_map.data[:copy_h, :copy_w] = self.map_obj.data[:copy_h, :copy_w]
                 new_map.undo_stack = self.map_obj.undo_stack
                 
-                self.manager.pop()
                 callback(new_map)
             except Exception as e:
                 print(f"Error resizing map: {e}")
-                self.manager.pop()
                 callback(None)
 
         super().__init__(manager, context, "RESIZE MAP", fields, on_submit)

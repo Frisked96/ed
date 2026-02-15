@@ -18,6 +18,23 @@ class EditorState(State):
         self.session.viewport_px_h = self.renderer.height - 120
         
         self.palette_rects = None
+        
+        self.panning = False
+        self.pan_start_pos = (0, 0)
+        self.pan_start_cam = (0, 0)
+        
+        # Register map listener
+        self._register_map_listener()
+
+    def _register_map_listener(self):
+        # Remove from old map if needed (though session usually has one map)
+        self.session.map_obj.listeners.append(self._on_map_change)
+
+    def _on_map_change(self, x, y):
+        if x is None or y is None:
+            self.renderer.invalidate_cache()
+        else:
+            self.renderer.invalidate_chunk(x, y)
 
     def enter(self, **kwargs):
         # We could show a "Toast" message here or something
@@ -29,24 +46,41 @@ class EditorState(State):
         elif event.type == pygame.KEYUP:
             self.input_handler.process_keyup(event.key)
         
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 2:
+                self.panning = False
+
         elif event.type == pygame.MOUSEMOTION:
             mx, my = event.pos
             
-            # Palette interaction (block cursor update)
-            if self.session.tool_state.show_palette and self.palette_rects and self.palette_rects[0].collidepoint(mx, my):
-                pass
-            else:
+            if self.panning:
                 tile_size = self.renderer.tile_size
-                # Calculate map coordinates based on camera position
-                map_x = (mx // tile_size) + self.session.camera_x
-                map_y = (my // tile_size) + self.session.camera_y
+                dx = (mx - self.pan_start_pos[0]) // tile_size
+                dy = (my - self.pan_start_pos[1]) // tile_size
                 
-                # Update cursor position if within bounds
-                if 0 <= map_x < self.session.map_obj.width and 0 <= map_y < self.session.map_obj.height:
-                    self.session.cursor_x = map_x
-                    self.session.cursor_y = map_y
+                self.session.camera_x = max(0, min(self.session.map_obj.width - self.session.view_width, self.pan_start_cam[0] - dx))
+                self.session.camera_y = max(0, min(self.session.map_obj.height - self.session.view_height, self.pan_start_cam[1] - dy))
+
+            # Only update map cursor if mouse is within the viewport (above status bar)
+            if my < self.session.viewport_px_h:
+                if self.session.tool_state.show_palette and self.palette_rects and self.palette_rects[0].collidepoint(mx, my):
+                    pass
+                else:
+                    tile_size = self.renderer.tile_size
+                    map_x = (mx // tile_size) + self.session.camera_x
+                    map_y = (my // tile_size) + self.session.camera_y
+                    
+                    if 0 <= map_x < self.session.map_obj.width and 0 <= map_y < self.session.map_obj.height:
+                        self.session.cursor_x = map_x
+                        self.session.cursor_y = map_y
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 2: # Middle Click Panning
+                self.panning = True
+                self.pan_start_pos = event.pos
+                self.pan_start_cam = (self.session.camera_x, self.session.camera_y)
+                return
+
             # Check Palette Interaction
             handled = False
             if self.session.tool_state.show_palette and self.palette_rects:

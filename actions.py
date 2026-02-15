@@ -78,7 +78,7 @@ def handle_editor_menu(session, context, action=None):
                 context.manager.push(ConfirmationState(context.manager, context, "Unsaved! Exit anyway? (y/n): ", on_confirm))
             else: session.running = False
         elif choice == "Quit Editor":
-            sys.exit(0)
+            context.manager.running = False
             
     menu_editor_pause(context, on_choice)
 
@@ -493,9 +493,15 @@ def handle_open_context_menu(session, context, action=None):
             ("Point Tool", lambda: set_tool('place')),
         ]
     else:
+        def draw_long(direction):
+            session.draw_long_line(direction, session.cursor_x, session.cursor_y)
+            show_message(context, f"Long {direction.capitalize()} Line Placed", notify=True)
+
         options = [
             ("Point Tool", lambda: set_tool('place')),
             ("Line Tool", lambda: set_tool('line')),
+            ("Long Horiz. Line", lambda: draw_long('horizontal')),
+            ("Long Vert. Line", lambda: draw_long('vertical')),
             ("Rect Tool", lambda: set_tool('rect')),
             ("Circle Tool", lambda: set_tool('circle')),
             ("Select Tool", lambda: set_tool('select')),
@@ -504,6 +510,7 @@ def handle_open_context_menu(session, context, action=None):
             ("Toggle Measurement", lambda: handle_measurement_toggle(session, context)),
             ("Measurement Settings", lambda: handle_measurement_configure(session, context)),
             ("---", None),
+            ("Go To Coordinates", lambda: handle_goto_coords(session, context)),
             ("Pick Tile", lambda: handle_tile_management(session, context, 'pick_tile')),
             ("Toggle Palette", lambda: handle_toggle_palette(session, context)),
             ("Undo", lambda: handle_undo_redo(session, context, 'undo')),
@@ -546,6 +553,33 @@ def handle_add_measurement_point(session, context, action=None):
         ts.measurement_config['points'].pop(0)
     show_message(context, f"Point added: {session.cursor_x}, {session.cursor_y}", notify=True)
 
+def handle_goto_coords(session, context, action=None):
+    def on_coords(inp):
+        if not inp: return
+        try:
+            if ',' in inp:
+                parts = inp.split(',')
+            else:
+                parts = inp.split()
+            
+            if len(parts) >= 2:
+                tx = int(parts[0].strip())
+                ty = int(parts[1].strip())
+                
+                # Clamp and jump
+                session.cursor_x = max(0, min(session.map_obj.width - 1, tx))
+                session.cursor_y = max(0, min(session.map_obj.height - 1, ty))
+                
+                # Center camera on cursor
+                session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.cursor_x - session.view_width // 2))
+                session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.cursor_y - session.view_height // 2))
+                
+                show_message(context, f"Jumped to {session.cursor_x}, {session.cursor_y}", notify=True)
+        except:
+            show_message(context, "Invalid coordinates. Use 'X, Y'", notify=True)
+
+    context.manager.push(TextInputState(context.manager, context, "Go to (X, Y): ", on_coords))
+
 def handle_measurement_configure(session, context, action=None):
     ts = session.tool_state
     
@@ -567,7 +601,7 @@ def handle_measurement_configure(session, context, action=None):
                 if val > 0: ts.measurement_config['grid_size'] = val
             except: pass
             
-            sc_str = str(data.get('show_coords', 'True')).lower()
+            sc_str = str(data.get('show_coords', 'True')).strip().lower()
             ts.measurement_config['show_coords'] = (sc_str == 'true')
             
             # Color parsing
@@ -578,7 +612,8 @@ def handle_measurement_configure(session, context, action=None):
                     ts.measurement_config['color'] = (parts[0], parts[1], parts[2])
             except: pass
 
-            if str(data.get('clear_points', 'n')).lower() == 'y':
+            cp_str = str(data.get('clear_points', 'n')).strip().lower()
+            if cp_str == 'y' or cp_str == 'yes':
                 ts.measurement_config['points'] = []
             
             show_message(context, "Measurement Config Saved", notify=True)
@@ -619,6 +654,7 @@ def get_action_dispatcher():
         'resize_map': handle_resize_map, 'set_seed': handle_set_seed,
         'statistics': handle_statistics, 'show_help': handle_show_help,
         'edit_controls': handle_edit_controls,
+        'goto_coords': handle_goto_coords,
         'save_map': handle_file_ops, 'load_map': handle_file_ops,
         'new_map': handle_file_ops, 'export_image': handle_file_ops,
         'macro_record_toggle': handle_macro_toggle,

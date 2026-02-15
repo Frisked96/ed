@@ -34,11 +34,23 @@ class Renderer:
             
         self.clock = pygame.time.Clock()
         self.glyph_cache = {}
+        self.chunk_cache = {} # (chunk_x, chunk_y) -> Surface
+        self.chunk_size = 32
         self.notifications = [] # List of (text, expiry_time, color)
         pygame.key.set_repeat(300, 50)
         
         # Subscribe to tile changes
         REGISTRY.subscribe(self.invalidate_cache)
+
+    def invalidate_cache(self):
+        self.glyph_cache = {}
+        self.chunk_cache = {}
+
+    def invalidate_chunk(self, map_x, map_y):
+        cx = map_x // self.chunk_size
+        cy = map_y // self.chunk_size
+        if (cx, cy) in self.chunk_cache:
+            del self.chunk_cache[(cx, cy)]
 
     def add_notification(self, text, duration=2.0, color=(0, 255, 0)):
         self.notifications.append({
@@ -96,14 +108,70 @@ class Renderer:
         w, h = self.screen.get_size()
         self.width, self.height = w, h
 
+    def _render_chunk(self, session, cx, cy):
+        ts = self.tile_size
+        surf = pygame.Surface((self.chunk_size * ts, self.chunk_size * ts))
+        surf.fill((0, 0, 0))
+        
+        start_x = cx * self.chunk_size
+        start_y = cy * self.chunk_size
+        
+        # Get slice of map data
+        data = session.map_obj.data[start_y : start_y + self.chunk_size, start_x : start_x + self.chunk_size]
+        
+        for y_rel, row in enumerate(data):
+            py = y_rel * ts
+            for x_rel, tid in enumerate(row):
+                px = x_rel * ts
+                glyph = self.get_glyph(tid)
+                if glyph:
+                    surf.blit(glyph, (px, py))
+        
+        return surf
+
     def draw_map(self, session):
+        # Clear the whole screen first to ensure no bleeding behind status bar
+        self.screen.fill((0, 0, 0))
+        
+        # Set clipping to viewport
+        viewport_rect = pygame.Rect(0, 0, session.viewport_px_w, session.viewport_px_h)
+        self.screen.set_clip(viewport_rect)
+        
         map_data = session.map_obj.data
         cam_x, cam_y = session.camera_x, session.camera_y
         view_w = session.view_width
         view_h = session.view_height
-        ts = session.tool_state
+        tile_size = self.tile_size
+        tool_state = session.tool_state
         
-        # Pre-calculate viewport bounds within the map
+        # 1. Determine visible chunks
+        # Use floor/ceil to ensure we cover every visible pixel
+        start_cx = int(cam_x // self.chunk_size)
+        start_cy = int(cam_y // self.chunk_size)
+        
+        # Calculate how many chunks are needed to cover the view width/height
+        # Adding 1 or 2 as a buffer to avoid "rendering in" artifacts at edges
+        end_cx = int((cam_x + view_w + 1) // self.chunk_size)
+        end_cy = int((cam_y + view_h + 1) // self.chunk_size)
+        
+        # 2. Draw visible chunks
+        for cy in range(start_cy, end_cy + 1):
+            if cy < 0 or cy * self.chunk_size >= session.map_obj.height: continue
+            for cx in range(start_cx, end_cx + 1):
+                if cx < 0 or cx * self.chunk_size >= session.map_obj.width: continue
+                
+                if (cx, cy) not in self.chunk_cache:
+                    self.chunk_cache[(cx, cy)] = self._render_chunk(session, cx, cy)
+                
+                chunk_surf = self.chunk_cache[(cx, cy)]
+                px = (cx * self.chunk_size - cam_x) * tile_size
+                py = (cy * self.chunk_size - cam_y) * tile_size
+                self.screen.blit(chunk_surf, (px, py))
+
+        # Clipping bounds for overlays (UI area check)
+        # We don't want to draw map overlays over the status bar
+        
+        # Pre-calculate viewport bounds within the map for overlays
         start_vx = max(0, -cam_x)
         start_vy = max(0, -cam_y)
         end_vx = min(view_w, session.map_obj.width - cam_x)
@@ -125,10 +193,10 @@ class Renderer:
             iy1 = min(sy1, cam_y + end_vy - 1)
             
             if ix0 <= ix1 and iy0 <= iy1:
-                sel_px = (ix0 - cam_x) * self.tile_size
-                sel_py = (iy0 - cam_y) * self.tile_size
-                sel_pw = (ix1 - ix0 + 1) * self.tile_size
-                sel_ph = (iy1 - iy0 + 1) * self.tile_size
+                sel_px = (ix0 - cam_x) * tile_size
+                sel_py = (iy0 - cam_y) * tile_size
+                sel_pw = (ix1 - ix0 + 1) * tile_size
+                sel_ph = (iy1 - iy0 + 1) * tile_size
                 
                 # Draw filled rect and border
                 color = (60, 60, 120) if session.selection_end else (60, 60, 180, 100)
@@ -137,7 +205,7 @@ class Renderer:
                 pygame.draw.rect(self.screen, (100, 100, 255), (sel_px, sel_py, sel_pw, sel_ph), 2)
 
         # Brush bounds for ghosting
-        br = ts.brush_size
+        br = tool_state.brush_size
         offset = br // 2
         bx0, by0 = session.cursor_x - offset, session.cursor_y - offset
         bx1, by1 = bx0 + br - 1, by0 + br - 1
@@ -149,35 +217,25 @@ class Renderer:
         iby1 = min(by1, cam_y + end_vy - 1)
 
         if ibx0 <= ibx1 and iby0 <= iby1:
-            b_px = (ibx0 - cam_x) * self.tile_size
-            b_py = (iby0 - cam_y) * self.tile_size
-            b_pw = (ibx1 - ibx0 + 1) * self.tile_size
-            b_ph = (iby1 - iby0 + 1) * self.tile_size
+            b_px = (ibx0 - cam_x) * tile_size
+            b_py = (iby0 - cam_y) * tile_size
+            b_pw = (ibx1 - ibx0 + 1) * tile_size
+            b_ph = (iby1 - iby0 + 1) * tile_size
             pygame.draw.rect(self.screen, (100, 100, 100), (b_px, b_py, b_pw, b_ph))
             
             # Bright cursor center
             if ibx0 <= session.cursor_x <= ibx1 and iby0 <= session.cursor_y <= iby1:
-                c_px = (session.cursor_x - cam_x) * self.tile_size
-                c_py = (session.cursor_y - cam_y) * self.tile_size
-                pygame.draw.rect(self.screen, (200, 200, 200), (c_px, c_py, self.tile_size, self.tile_size))
+                c_px = (session.cursor_x - cam_x) * tile_size
+                c_py = (session.cursor_y - cam_y) * tile_size
+                pygame.draw.rect(self.screen, (200, 200, 200), (c_px, c_py, tile_size, tile_size))
 
-        # Draw actual tiles
-        # We can further optimize by fetching the sub-array once
-        visible_data = map_data[cam_y + start_vy : cam_y + end_vy, cam_x + start_vx : cam_x + end_vx]
-        
-        for vy_rel, row in enumerate(visible_data):
-            py = (start_vy + vy_rel) * self.tile_size
-            if py >= self.height - 120: break
-            for vx_rel, tid in enumerate(row):
-                px = (start_vx + vx_rel) * self.tile_size
-                if px >= self.width: break
-                glyph = self.get_glyph(tid)
-                if glyph:
-                    self.screen.blit(glyph, (px, py))
-        
-        session.status_y = self.height - 110
         self._draw_tool_preview(session)
         self._draw_measurement_overlay(session)
+        
+        # Reset clipping for UI elements
+        self.screen.set_clip(None)
+        
+        session.status_y = self.height - 110
         self.draw_notifications()
 
     def _draw_measurement_overlay(self, session):
@@ -412,7 +470,4 @@ class Renderer:
                 self.screen.blit(glyph, (px, py))
                 
         return pygame.Rect(x_base, y_base, palette_w, palette_h), clickable_rects
-
-    def invalidate_cache(self):
-        self.glyph_cache = {}
 

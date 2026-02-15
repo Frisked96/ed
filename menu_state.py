@@ -65,7 +65,7 @@ class MainMenuState(State):
                 ts = ToolState(tiling_rules=self.tiling_rules)
                 self.manager.push(AutoTilingManagerState(self.manager, self.renderer, ts))
             elif event.key == pygame.K_q:
-                sys.exit()
+                self.manager.running = False
 
     def start_editor(self, map_obj):
         if map_obj is None:

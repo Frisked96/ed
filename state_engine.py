@@ -1,5 +1,6 @@
 import pygame
 import pygame_gui
+import sys
 from typing import Optional
 
 class State:
@@ -85,3 +86,7 @@ class StateManager:
             
             self.ui_manager.draw_ui(self.screen)
             pygame.display.flip()
+            
+        pygame.display.quit()
+        pygame.quit()
+        sys.exit()

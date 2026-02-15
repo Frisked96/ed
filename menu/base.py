@@ -342,6 +342,8 @@ class FormState(State):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     self.options[self.selected][1] = self.editing_text
+                    if self.selected < len(self.fields):
+                        self.fields[self.selected][1] = self.editing_text
                     self.is_editing = False
                     pygame.key.stop_text_input()
                     return

@@ -25,6 +25,7 @@ class Map:
         self.height = height
         self.undo_stack = undo_stack
         self.dirty = False
+        self.listeners = []
         if data is not None:
             if isinstance(data, np.ndarray):
                 self.data = data.copy()
@@ -52,8 +53,14 @@ class Map:
             if self.data[y, x] != tile_id:
                 self.data[y, x] = tile_id
                 self.dirty = True
+                for l in self.listeners:
+                    l(x, y)
                 return True
         return False
+    
+    def trigger_full_update(self):
+        for l in self.listeners:
+            l(None, None) # Special case for full redraw
 
     def push_undo(self):
         if self.undo_stack:
@@ -158,4 +165,14 @@ class EditorSession:
         self.key_map = {}
         self.action_queue = deque()
         self.status_y = 0
+
+    def draw_long_line(self, direction, x, y):
+        """Draws a line of the selected tile across the entire map."""
+        self.map_obj.push_undo()
+        if direction == 'horizontal':
+            for lx in range(self.map_obj.width):
+                self.map_obj.set(lx, y, self.selected_tile_id)
+        elif direction == 'vertical':
+            for ly in range(self.map_obj.height):
+                self.map_obj.set(x, ly, self.selected_tile_id)
 

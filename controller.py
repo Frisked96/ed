@@ -26,7 +26,7 @@ class InputHandler:
         for key in to_remove:
             self.held_keys.remove(key)
 
-    def process_key(self, key, unicode_char, renderer):
+    def process_key(self, key, unicode_char, manager):
         is_repeat = key in self.held_keys
         self.held_keys.add(key)
 
@@ -63,9 +63,9 @@ class InputHandler:
             # Prevent key repeat for place_tile unless in 'place' mode (painting)
             if is_repeat and action == 'place_tile' and self.session.tool_state.mode != 'place':
                 continue
-            self.dispatch(action, renderer)
+            self.dispatch(action, manager)
 
-    def process_mouse(self, button, renderer):
+    def process_mouse(self, button, manager):
         # Check modifiers
         mods = pygame.key.get_mods()
         key_parts = []
@@ -84,9 +84,9 @@ class InputHandler:
             actions = self.session.key_map.get(f"mouse {button}", [])
         
         for action in actions:
-            self.dispatch(action, renderer)
+            self.dispatch(action, manager)
 
-    def handle_mouse_hold(self, renderer):
+    def handle_mouse_hold(self, manager):
         # Support continuous painting (hold to paint) for mouse
         # Only applies to 'place_tile' in 'place' mode
         pressed = pygame.mouse.get_pressed()
@@ -98,15 +98,14 @@ class InputHandler:
                 actions = self.session.key_map.get(key_name, [])
                 for action in actions:
                     if action == 'place_tile' and self.session.tool_state.mode == 'place':
-                         self.dispatch(action, renderer)
+                         self.dispatch(action, manager)
 
-    def dispatch(self, action, context):
+    def dispatch(self, action, manager):
         if action in self.dispatcher:
             # Record action if recording is active, but don't record the toggle itself
             ts = self.session.tool_state
             if ts.recording and action != 'macro_record_toggle':
                 ts.current_macro_actions.append(action)
 
-            # Note: Actions currently expect (session, context, action)
-            # where context was the old PygameContext. Renderer now acts as context.
-            self.dispatcher[action](self.session, context, action)
+            # Actions now expect (session, manager, action)
+            self.dispatcher[action](self.session, manager, action)

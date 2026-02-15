@@ -1,70 +1,95 @@
 import pygame
-import sys
+import pygame_gui
+from pygame_gui.elements import UIButton, UILabel
 from state_engine import State
 from core import EditorSession
 from map_io import load_config
 from editor_state import EditorState
-from menu import (
-    NewMapState, LoadMapState, TileRegistryState, 
-    ControlSettingsState, MacroManagerState, AutoTilingManagerState
-)
-from tiles import REGISTRY
 
 class MainMenuState(State):
     def __init__(self, manager, renderer):
         super().__init__(manager)
         self.renderer = renderer
-        self.font = renderer.font
-        self.options = [
-            "1. New Map",
-            "2. Load Map",
-            "3. Define Custom Tiles",
-            "4. Macro Manager",
-            "5. Edit Controls",
-            "6. Auto-Tiling Manager",
-            "Q. Quit"
-        ]
+        self.ui_elements = []
         # Pre-load config/macros/rules to pass to session
         self.bindings = load_config()
         self.macros = {} 
         self.tiling_rules = {}
 
+    def enter(self, **kwargs):
+        """Create pygame_gui elements when the state is entered."""
+        w, h = self.renderer.screen.get_size()
+        
+        # Title
+        UILabel(
+            relative_rect=pygame.Rect((w // 2 - 200, 20), (400, 50)),
+            text="=== ADVANCED MAP EDITOR ===",
+            manager=self.ui_manager
+        )
+
+        menu_options = [
+            ("New Map", "new"),
+            ("Load Map", "load"),
+            ("Define Custom Tiles", "tiles"),
+            ("Macro Manager", "macros"),
+            ("Edit Controls", "controls"),
+            ("Auto-Tiling Manager", "autotile"),
+            ("Quit", "quit")
+        ]
+
+        # Create buttons
+        btn_w, btn_h = 300, 40
+        start_y = 100
+        for i, (label, action_id) in enumerate(menu_options):
+            btn = UIButton(
+                relative_rect=pygame.Rect((w // 2 - btn_w // 2, start_y + i * (btn_h + 10)), (btn_w, btn_h)),
+                text=label,
+                manager=self.ui_manager,
+                tool_tip_text=f"Click to start {label.lower()}",
+                object_id=f"#{action_id}"
+            )
+            self.ui_elements.append(btn)
+
+    def exit(self):
+        """Clean up UI elements when leaving the state."""
+        for element in self.ui_elements:
+            element.kill()
+        self.ui_elements.clear()
+
     def draw(self, surface):
+        # We only clear the screen; pygame_gui handles drawing the widgets
         self.renderer.clear()
-        
-        # Draw Title
-        title = self.font.render("=== ADVANCED MAP EDITOR ===", True, (255, 255, 255))
-        self.renderer.screen.blit(title, (10, 10))
-        
-        # Draw Options
-        for i, opt in enumerate(self.options):
-            text = self.font.render(opt, True, (200, 200, 200))
-            self.renderer.screen.blit(text, (20, 50 + i * 30))
-            
-        # We don't need to flip, StateManager does it
 
     def handle_event(self, event):
         vw = self.renderer.width // self.renderer.tile_size
         vh = (self.renderer.height - 120) // self.renderer.tile_size
-        
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_1:
-                self.manager.push(NewMapState(self.manager, self.renderer, vw, vh, self.start_editor))
-            elif event.key == pygame.K_2:
-                self.manager.push(LoadMapState(self.manager, self.renderer, vw, vh, self.start_editor))
-            elif event.key == pygame.K_3:
-                self.manager.push(TileRegistryState(self.manager, self.renderer))
-            elif event.key == pygame.K_4:
+        flow = self.manager.flow
+
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            # Check by button text for maximum reliability in this setup
+            text = event.ui_element.text
+            
+            if text == "New Map":
+                flow.push_new_map_wizard(vw, vh, self.start_editor)
+            elif text == "Load Map":
+                flow.push_load_map_wizard(vw, vh, self.start_editor)
+            elif text == "Define Custom Tiles":
+                flow.push_tile_registry()
+            elif text == "Macro Manager":
                 from core import ToolState
                 ts = ToolState(macros=self.macros)
-                self.manager.push(MacroManagerState(self.manager, self.renderer, ts))
-            elif event.key == pygame.K_5:
-                self.manager.push(ControlSettingsState(self.manager, self.renderer, self.bindings))
-            elif event.key == pygame.K_6:
+                flow.push_macro_manager(ts)
+            elif text == "Edit Controls":
+                flow.push_control_settings(self.bindings)
+            elif text == "Auto-Tiling Manager":
                 from core import ToolState
                 ts = ToolState(tiling_rules=self.tiling_rules)
-                self.manager.push(AutoTilingManagerState(self.manager, self.renderer, ts))
-            elif event.key == pygame.K_q:
+                flow.push_autotile_manager(ts)
+            elif text == "Quit":
+                self.manager.running = False
+
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
                 self.manager.running = False
 
     def start_editor(self, map_obj):
@@ -82,5 +107,4 @@ class MainMenuState(State):
             macros=self.macros, 
             tiling_rules=self.tiling_rules
         )
-        editor = EditorState(self.manager, session, self.renderer)
-        self.manager.push(editor)
+        self.manager.flow.start_session(session=session)

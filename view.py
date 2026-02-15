@@ -7,23 +7,11 @@ from tiles import REGISTRY
 from core import COLOR_MAP
 
 class Renderer:
-    def __init__(self, width=None, height=None, tile_size=20):
-        pygame.init()
+    def __init__(self, screen, tile_size=20):
         self.tile_size = tile_size
+        self.screen = screen
+        self.width, self.height = screen.get_size()
         
-        # Get display info for intelligent defaults
-        display_info = pygame.display.Info()
-        screen_w = display_info.current_w
-        screen_h = display_info.current_h
-        
-        # Use provided dimensions or sensible defaults that fit the screen
-        self.width = width if width is not None else int(screen_w * 0.9)
-        self.height = height if height is not None else int(screen_h * 0.8)
-        
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
-        pygame.display.set_caption("Advanced Map Editor")
-        
-        self.manager = None # Set by Main
         self.font_size = 20
         try:
             self.font = pygame.font.SysFont("Courier New", self.font_size, bold=True)
@@ -32,15 +20,23 @@ class Renderer:
         except:
             self.font = pygame.font.Font(None, self.font_size)
             
-        self.clock = pygame.time.Clock()
         self.glyph_cache = {}
         self.chunk_cache = {} # (chunk_x, chunk_y) -> Surface
         self.chunk_size = 32
-        self.notifications = [] # List of (text, expiry_time, color)
-        pygame.key.set_repeat(300, 50)
         
         # Subscribe to tile changes
         REGISTRY.subscribe(self.invalidate_cache)
+
+    def draw_notifications(self, notifications):
+        """Purely visual: takes a list of active notification objects and draws them."""
+        y = 10
+        now = time.time()
+        for n in notifications:
+            time_left = n["expiry"] - now
+            alpha = int(min(1.0, time_left / 0.5) * 255)
+            surf = self.font.render(n["text"], True, n["color"])
+            self.screen.blit(surf, (self.width - surf.get_width() - 10, y))
+            y += surf.get_height() + 5
 
     def invalidate_cache(self):
         self.glyph_cache = {}
@@ -51,28 +47,6 @@ class Renderer:
         cy = map_y // self.chunk_size
         if (cx, cy) in self.chunk_cache:
             del self.chunk_cache[(cx, cy)]
-
-    def add_notification(self, text, duration=2.0, color=(0, 255, 0)):
-        self.notifications.append({
-            "text": text,
-            "expiry": time.time() + duration,
-            "color": color,
-            "start": duration
-        })
-
-    def draw_notifications(self):
-        now = time.time()
-        # Filter out expired ones
-        self.notifications = [n for n in self.notifications if n["expiry"] > now]
-        
-        y = 10
-        for n in self.notifications:
-            time_left = n["expiry"] - now
-            alpha = int(min(1.0, time_left / 0.5) * 255) # Fade out in last 0.5s
-            
-            surf = self.font.render(n["text"], True, n["color"])
-            self.screen.blit(surf, (self.width - surf.get_width() - 10, y))
-            y += surf.get_height() + 5
 
     def get_glyph(self, tile_id, bg_color=None):
         # Optimized lookup

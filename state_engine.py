@@ -33,11 +33,22 @@ class StateManager:
         self.states = []
         self.ui_manager = pygame_gui.UIManager(screen.get_size())
         self.clock = pygame.time.Clock()
+        self.notifications = []
 
-    def push(self, state: State, **kwargs):
-        if self.states:
-            # We don't exit the previous state, we just pause it effectively
-            pass
+    def notify(self, text, duration=2.0, color=(0, 255, 0)):
+        import time
+        self.notifications.append({
+            "text": text,
+            "expiry": time.time() + duration,
+            "color": color
+        })
+
+    def _update_notifications(self):
+        import time
+        now = time.time()
+        self.notifications = [n for n in self.notifications if n["expiry"] > now]
+
+    def push(self, state, **kwargs):
         self.states.append(state)
         state.enter(**kwargs)
 
@@ -45,22 +56,35 @@ class StateManager:
         if self.states:
             top = self.states.pop()
             top.exit()
+            # Safety: Ensure text input is stopped
+            pygame.key.stop_text_input()
         if self.states:
-            # Resume previous state if needed
+            # Re-sync keys for the resuming state
             pass
 
-    def set(self, state: State, **kwargs):
+    def set(self, state, **kwargs):
+        """Clear the stack and set a new root state."""
         while self.states:
-            self.pop()
+            top = self.states.pop()
+            top.exit()
+        
+        # Reset global Pygame states
+        pygame.key.stop_text_input()
+        
         self.push(state, **kwargs)
 
+    def change_state(self, state, **kwargs):
+        """Alias for set() to encourage centralized transitions."""
+        self.set(state, **kwargs)
+
     @property
-    def current_state(self) -> Optional[State]:
+    def current_state(self):
         return self.states[-1] if self.states else None
 
-    def run(self):
+    def run(self, renderer):
         while self.running:
             dt = self.clock.tick(60) / 1000.0
+            self._update_notifications()
             
             # Event Loop
             for event in pygame.event.get():
@@ -69,7 +93,6 @@ class StateManager:
                 
                 self.ui_manager.process_events(event)
                 
-                # Only the top-most state handles events
                 if self.states:
                     self.states[-1].handle_event(event)
 
@@ -79,11 +102,10 @@ class StateManager:
                 self.states[-1].update(dt)
 
             # Draw
-            # Draw all states from bottom to top (allows overlays)
-            # We don't clear the screen here anymore; individual states decide if they fill the background
             for state in self.states:
                 state.draw(self.screen)
             
+            renderer.draw_notifications(self.notifications)
             self.ui_manager.draw_ui(self.screen)
             pygame.display.flip()
             

@@ -42,7 +42,7 @@ class EditorState(State):
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
-            self.input_handler.process_key(event.key, event.unicode, self.renderer)
+            self.input_handler.process_key(event.key, event.unicode, self.manager)
         elif event.type == pygame.KEYUP:
             self.input_handler.process_keyup(event.key)
         
@@ -96,7 +96,7 @@ class EditorState(State):
             if not handled:
                 # Dispatch mouse button press as an action
                 # event.button is 1 (left), 2 (middle), 3 (right), 4 (scroll up), 5 (scroll down)
-                self.input_handler.process_mouse(event.button, self.renderer)
+                self.input_handler.process_mouse(event.button, self.manager)
 
         elif event.type == pygame.VIDEORESIZE:
             self.renderer.update_dimensions()
@@ -115,7 +115,7 @@ class EditorState(State):
         # Support continuous mouse painting (hold to paint)
         mx, my = pygame.mouse.get_pos()
         if not (self.session.tool_state.show_palette and self.palette_rects and self.palette_rects[0].collidepoint(mx, my)):
-             self.input_handler.handle_mouse_hold(self.renderer)
+             self.input_handler.handle_mouse_hold(self.manager)
 
         if not self.session.running:
             self.manager.pop()
@@ -124,7 +124,7 @@ class EditorState(State):
         # Handle queued actions if any (from macros)
         if self.session.action_queue:
             action = self.session.action_queue.popleft()
-            self.input_handler.dispatch(action, self.renderer)
+            self.input_handler.dispatch(action, self.manager)
             
     def draw(self, surface):
         self.renderer.clear()

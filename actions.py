@@ -15,7 +15,7 @@ from menu import (
 from core import Map
 from tiles import REGISTRY
 
-def check_autosave(session, context):
+def check_autosave(session, manager):
     ts = session.tool_state
     if not ts.autosave_enabled: return
 
@@ -31,27 +31,28 @@ def check_autosave(session, context):
         if autosave_map(session.map_obj, ts.autosave_filename):
             ts.edits_since_save = 0
             ts.last_autosave_time = time.time()
-            show_message(context, f"Autosaved to {ts.autosave_filename}", notify=True)
+            show_message(manager, f"Autosaved to {ts.autosave_filename}", notify=True)
 
-def show_message(context, text, notify=False):
-    if notify and hasattr(context, 'add_notification'):
-        context.add_notification(text)
+def show_message(manager, text, notify=False):
+    if notify:
+        manager.notify(text)
         return
-    
-    context.manager.push(MessageState(context.manager, context, text))
+    manager.flow.push_message(text)
 
-def handle_quit(session, context, action=None):
+def handle_quit(session, manager, action=None):
+    flow = manager.flow
     if session.map_obj.dirty:
         def on_confirm(confirmed):
-            if confirmed: session.running = False
-        context.manager.push(ConfirmationState(context.manager, context, "Unsaved! Quit anyway? (y/n): ", on_confirm))
+            if confirmed: flow.exit_to_menu()
+        flow.push_confirmation("Unsaved! Quit anyway? (y/n): ", on_confirm)
     else:
-        session.running = False
+        flow.exit_to_menu()
 
-def handle_editor_menu(session, context, action=None):
+def handle_editor_menu(session, manager, action=None):
+    flow = manager.flow
     def on_choice(choice):
         if choice == "Save Map":
-            if menu_save_map(context, session.map_obj):
+            if menu_save_map(manager, session.map_obj):
                 session.map_obj.dirty = False
         elif choice == "Load Map":
             def _on_loaded(m):
@@ -61,28 +62,26 @@ def handle_editor_menu(session, context, action=None):
                     session.map_obj.dirty = False
                     session.camera_x, session.camera_y = 0, 0
                     session.cursor_x, session.cursor_y = 0, 0
-                    context.invalidate_cache()
-            context.manager.push(LoadMapState(context.manager, context, session.view_width, session.view_height, _on_loaded))
+            flow.push_load_map_wizard(session.view_width, session.view_height, _on_loaded)
         elif choice == "Macro Manager":
-            from menu.managers import MacroManagerState
-            context.manager.push(MacroManagerState(context.manager, context, session.tool_state))
+            flow.push_macro_manager(session.tool_state)
         elif choice == "Auto-Tiling Manager":
-            from menu.managers import AutoTilingManagerState
-            context.manager.push(AutoTilingManagerState(context.manager, context, session.tool_state))
+            flow.push_autotile_manager(session.tool_state)
         elif choice == "Autosave Settings":
-            menu_autosave_settings(context, session.tool_state)
+            menu_autosave_settings(manager, session.tool_state)
         elif choice == "Exit to Main Menu":
             if session.map_obj.dirty:
                 def on_confirm(confirmed):
-                    if confirmed: session.running = False
-                context.manager.push(ConfirmationState(context.manager, context, "Unsaved! Exit anyway? (y/n): ", on_confirm))
-            else: session.running = False
+                    if confirmed: flow.exit_to_menu()
+                flow.push_confirmation("Unsaved! Exit anyway? (y/n): ", on_confirm)
+            else: 
+                flow.exit_to_menu()
         elif choice == "Quit Editor":
-            context.manager.running = False
+            manager.running = False
             
-    menu_editor_pause(context, on_choice)
+    flow.push_pause_menu(on_choice)
 
-def handle_move_view(session, context, action=None):
+def handle_move_view(session, manager, action=None):
     if action == 'move_view_up':
         session.camera_y = max(0, session.camera_y - 1)
     elif action == 'move_view_down':
@@ -92,7 +91,7 @@ def handle_move_view(session, context, action=None):
     elif action == 'move_view_right':
         session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.camera_x + 1))
 
-def handle_move_cursor(session, context, action=None):
+def handle_move_cursor(session, manager, action=None):
     snap = session.tool_state.snap_size
     if action == 'move_cursor_up':
         session.cursor_y = max(0, session.cursor_y - snap)
@@ -114,7 +113,7 @@ def handle_move_cursor(session, context, action=None):
     if session.cursor_y >= session.camera_y + session.view_height:
         session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.cursor_y - session.view_height + 1))
 
-def handle_place_tile(session, context, action=None):
+def handle_place_tile(session, manager, action=None):
     ts = session.tool_state
     if ts.mode == 'place':
         old_val = session.map_obj.get(session.cursor_x, session.cursor_y)
@@ -122,7 +121,7 @@ def handle_place_tile(session, context, action=None):
             session.map_obj.push_undo()
             place_tile_at(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
             ts.edits_since_save += 1
-            check_autosave(session, context)
+            check_autosave(session, manager)
     elif ts.mode in ('line', 'rect', 'circle', 'pattern', 'select'):
         if ts.start_point is None:
             ts.start_point = (session.cursor_x, session.cursor_y)
@@ -133,27 +132,27 @@ def handle_place_tile(session, context, action=None):
                 session.selection_start = (min(x0, x1), min(y0, y1))
                 session.selection_end = (max(x0, x1), max(y0, y1))
                 ts.start_point = None
-                show_message(context, "Area Selected", notify=True)
+                show_message(manager, "Area Selected", notify=True)
             elif ts.mode == 'line':
                 session.map_obj.push_undo()
                 draw_line(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
                 ts.start_point = None
                 ts.edits_since_save += 1
-                check_autosave(session, context)
+                check_autosave(session, manager)
             elif ts.mode == 'rect':
                 def on_rect_confirm(filled):
                     session.map_obj.push_undo()
                     draw_rectangle(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
                     ts.start_point = None
                     ts.edits_since_save += 1
-                    check_autosave(session, context)
+                    check_autosave(session, manager)
                 
                 if ts.shape_fill_mode == 'fill':
                     on_rect_confirm(True)
                 elif ts.shape_fill_mode == 'outline':
                     on_rect_confirm(False)
                 else:
-                    context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_rect_confirm))
+                    manager.flow.push_confirmation("Filled? (y/n): ", on_rect_confirm)
             elif ts.mode == 'circle':
                 def on_circle_confirm(filled):
                     session.map_obj.push_undo()
@@ -161,34 +160,33 @@ def handle_place_tile(session, context, action=None):
                     draw_circle(session.map_obj, ts.start_point[0], ts.start_point[1], radius, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
                     ts.start_point = None
                     ts.edits_since_save += 1
-                    check_autosave(session, context)
+                    check_autosave(session, manager)
 
                 if ts.shape_fill_mode == 'fill':
                     on_circle_confirm(True)
                 elif ts.shape_fill_mode == 'outline':
                     on_circle_confirm(False)
                 else:
-                    context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_circle_confirm))
+                    manager.flow.push_confirmation("Filled? (y/n): ", on_circle_confirm)
 
-def handle_flood_fill(session, context, action=None):
+def handle_flood_fill(session, manager, action=None):
     old_char = session.map_obj.get(session.cursor_x, session.cursor_y)
     if old_char != session.selected_tile_id:
         session.map_obj.push_undo()
         flood_fill(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id)
         session.tool_state.edits_since_save += 1
-        check_autosave(session, context)
+        check_autosave(session, manager)
 
-def handle_undo_redo(session, context, action=None):
+def handle_undo_redo(session, manager, action=None):
     res = session.undo_stack.undo(session.map_obj.copy_data()) if action == 'undo' else session.undo_stack.redo(session.map_obj.copy_data())
     if res is not None:
         session.map_obj.data = res
         session.map_obj.dirty = True
         session.selection_start = session.selection_end = None
-        context.invalidate_cache()
-        check_autosave(session, context)
-        show_message(context, f"{action.capitalize()} successful", notify=True)
+        check_autosave(session, manager)
+        show_message(manager, f"{action.capitalize()} successful", notify=True)
 
-def handle_selection(session, context, action=None):
+def handle_selection(session, manager, action=None):
     if action == 'select_start':
         if session.selection_start is None: session.selection_start, session.selection_end = (session.cursor_x, session.cursor_y), None
         elif session.selection_end is None:
@@ -202,31 +200,31 @@ def handle_selection(session, context, action=None):
         x0, y0 = session.selection_start
         x1, y1 = session.selection_end
         session.clipboard = [[session.map_obj.get(x, y) for x in range(x0, x1+1)] for y in range(y0, y1+1)]
-        show_message(context, f"Copied {x1-x0+1}x{y1-y0+1} area", notify=True)
+        show_message(manager, f"Copied {x1-x0+1}x{y1-y0+1} area", notify=True)
     elif action == 'paste_selection' and session.clipboard:
         session.map_obj.push_undo()
         for dy, row in enumerate(session.clipboard):
             for dx, ch in enumerate(row):
                 session.map_obj.set(session.cursor_x + dx, session.cursor_y + dy, ch)
         session.tool_state.edits_since_save += 1
-        check_autosave(session, context)
-        show_message(context, "Pasted area", notify=True)
+        check_autosave(session, manager)
+        show_message(manager, "Pasted area", notify=True)
     elif action == 'clear_area' and session.selection_start and session.selection_end:
         session.map_obj.push_undo()
         for y in range(session.selection_start[1], session.selection_end[1]+1):
             for x in range(session.selection_start[0], session.selection_end[0]+1):
                 session.map_obj.set(x, y, 0) # 0 is void
         session.tool_state.edits_since_save += 1
-        check_autosave(session, context)
-        show_message(context, "Area cleared", notify=True)
+        check_autosave(session, manager)
+        show_message(manager, "Area cleared", notify=True)
 
-def handle_rotate_selection_action(session, context, action=None):
+def handle_rotate_selection_action(session, manager, action=None):
     if not (session.selection_start and session.selection_end):
         if session.clipboard:
              session.clipboard = rotate_selection_90(session.clipboard)
-             show_message(context, "Clipboard Rotated (Paste to apply)", notify=True)
+             show_message(manager, "Clipboard Rotated (Paste to apply)", notify=True)
              return
-        show_message(context, "No selection to rotate")
+        show_message(manager, "No selection to rotate")
         return
 
     # In-Place Rotation
@@ -269,10 +267,10 @@ def handle_rotate_selection_action(session, context, action=None):
     session.selection_end = (nx + new_w - 1, ny + new_h - 1)
     
     session.tool_state.edits_since_save += 1
-    check_autosave(session, context)
-    show_message(context, "Selection Rotated", notify=True)
+    check_autosave(session, manager)
+    show_message(manager, "Selection Rotated", notify=True)
 
-def handle_map_transform(session, context, action=None):
+def handle_map_transform(session, manager, action=None):
     session.map_obj.push_undo()
     if action == 'map_rotate':
         new_data = rotate_selection_90(session.map_obj.data)
@@ -287,22 +285,20 @@ def handle_map_transform(session, context, action=None):
         elif 'left' in action: dx = -1
         elif 'right' in action: dx = 1
         session.map_obj.data = shift_map(session.map_obj.data, dx, dy)
-    context.invalidate_cache()
     session.tool_state.edits_since_save += 1
-    check_autosave(session, context)
+    check_autosave(session, manager)
 
-def handle_generation(session, context, action=None):
+def handle_generation(session, manager, action=None):
     session.map_obj.push_undo()
     success = False
-    if action == 'random_gen': success = menu_random_generation(context, session.map_obj, session.tool_state.seed)
-    elif action == 'perlin_noise': success = menu_perlin_generation(context, session.map_obj, session.tool_state.seed)
-    elif action == 'voronoi': success = menu_voronoi_generation(context, session.map_obj, session.tool_state.seed)
+    if action == 'random_gen': success = menu_random_generation(manager, session.map_obj, session.tool_state.seed)
+    elif action == 'perlin_noise': success = menu_perlin_generation(manager, session.map_obj, session.tool_state.seed)
+    elif action == 'voronoi': success = menu_voronoi_generation(manager, session.map_obj, session.tool_state.seed)
     if success: 
         session.tool_state.edits_since_save += 1
-        check_autosave(session, context)
-        context.invalidate_cache()
+        check_autosave(session, manager)
 
-def handle_tile_management(session, context, action=None):
+def handle_tile_management(session, manager, action=None):
     if action == 'cycle_tile':
         all_tiles = list(REGISTRY.get_all())
         if not all_tiles: return
@@ -318,14 +314,12 @@ def handle_tile_management(session, context, action=None):
         def _on_picked(picked_id):
             if picked_id is not None:
                 session.selected_tile_id = picked_id
-        from menu.pickers import TilePickerState
-        context.manager.push(TilePickerState(context.manager, context, _on_picked))
+        manager.flow.push_tile_picker(_on_picked)
             
     elif action == 'define_tiles':
-        from menu.registry import TileRegistryState
-        context.manager.push(TileRegistryState(context.manager, context))
+        manager.flow.push_tile_registry()
 
-def handle_replace_all(session, context, action=None):
+def handle_replace_all(session, manager, action=None):
     def on_old_char(old_c):
         if old_c and len(old_c) == 1:
             def on_new_char(new_c):
@@ -340,63 +334,61 @@ def handle_replace_all(session, context, action=None):
                                 if session.map_obj.get(x, y) == old_id:
                                     session.map_obj.set(x, y, new_id)
                                     cnt += 1
-                        context.invalidate_cache()
                         session.tool_state.edits_since_save += 1
-                        check_autosave(session, context)
-                        show_message(context, f"Replaced {cnt} tiles", notify=True)
-            context.manager.push(TextInputState(context.manager, context, "With tile char: ", on_new_char))
-    context.manager.push(TextInputState(context.manager, context, "Replace tile char: ", on_old_char))
+                        check_autosave(session, manager)
+                        show_message(manager, f"Replaced {cnt} tiles", notify=True)
+            manager.flow.push_text_input("With tile char: ", on_new_char)
+    manager.flow.push_text_input("Replace tile char: ", on_old_char)
 
-def handle_brush_size(session, context, action=None):
+def handle_brush_size(session, manager, action=None):
     if action == 'increase_brush':
         session.tool_state.brush_size = min(session.tool_state.brush_size + 1, 10)
     elif action == 'decrease_brush':
         session.tool_state.brush_size = max(session.tool_state.brush_size - 1, 1)
 
-def handle_measurement(session, context, action=None):
+def handle_measurement(session, manager, action=None):
     session.tool_state.measure_start = (session.cursor_x, session.cursor_y)
 
-def handle_tool_select(session, context, action=None):
+def handle_tool_select(session, manager, action=None):
     ts = session.tool_state
     ts.mode = action.split('_')[0]
     ts.start_point = None
 
-def handle_define_pattern(session, context, action=None):
+def handle_define_pattern(session, manager, action=None):
     def on_pattern(pattern):
         if pattern:
             session.tool_state.pattern = pattern
-            show_message(context, "Pattern defined", notify=True)
-    menu_define_pattern(context, on_pattern)
+            show_message(manager, "Pattern defined", notify=True)
+    menu_define_pattern(manager, on_pattern)
 
-def handle_define_brush(session, context, action=None):
+def handle_define_brush(session, manager, action=None):
     def on_brush(brush):
         if brush:
             session.tool_state.brush_shape = brush
-            show_message(context, "Brush defined", notify=True)
-    menu_define_brush(context, on_brush)
+            show_message(manager, "Brush defined", notify=True)
+    menu_define_brush(manager, on_brush)
 
-def handle_toggle_snap(session, context, action=None):
+def handle_toggle_snap(session, manager, action=None):
     def on_snap(inp):
         try:
             session.tool_state.snap_size = int(inp or "1")
         except: pass
-    context.manager.push(TextInputState(context.manager, context, "Enter snap size: ", on_snap))
+    manager.flow.push_text_input("Enter snap size: ", on_snap)
 
-def handle_toggle_palette(session, context, action=None):
+def handle_toggle_palette(session, manager, action=None):
     session.tool_state.show_palette = not session.tool_state.show_palette
 
-def handle_toggle_autotile(session, context, action=None):
+def handle_toggle_autotile(session, manager, action=None):
     session.tool_state.auto_tiling = not session.tool_state.auto_tiling
 
-def handle_resize_map(session, context, action=None):
+def handle_resize_map(session, manager, action=None):
     def on_resized(new_map):
         if new_map:
             session.map_obj = new_map
             session.map_obj.dirty = False
-            context.invalidate_cache()
-    menu_resize_map(context, session.map_obj, session.view_width, session.view_height, on_resized)
+    manager.flow.push_resize_wizard(session.map_obj, session.view_width, session.view_height, on_resized)
 
-def handle_set_seed(session, context, action=None):
+def handle_set_seed(session, manager, action=None):
     def on_seed(inp):
         if inp:
             if inp.lower() == 'random':
@@ -408,21 +400,20 @@ def handle_set_seed(session, context, action=None):
             random.seed(session.tool_state.seed)
             np.random.seed(session.tool_state.seed)
     prompt = f"New seed (current: {session.tool_state.seed if session.tool_state.seed is not None else 'random'}): "
-    context.manager.push(TextInputState(context.manager, context, prompt, on_seed))
+    manager.flow.push_text_input(prompt, on_seed)
 
-def handle_statistics(session, context, action=None):
-    menu_statistics(context, session.map_obj)
+def handle_statistics(session, manager, action=None):
+    menu_statistics(manager, session.map_obj)
 
-def handle_show_help(session, context, action=None):
-    context.manager.push(HelpState(context.manager, context, session.bindings))
+def handle_show_help(session, manager, action=None):
+    manager.flow.push_help(session.bindings)
 
-def handle_edit_controls(session, context, action=None):
-    from menu.settings import ControlSettingsState
-    context.manager.push(ControlSettingsState(context.manager, context, session.bindings))
+def handle_edit_controls(session, manager, action=None):
+    manager.flow.push_control_settings(session.bindings)
 
-def handle_file_ops(session, context, action=None):
+def handle_file_ops(session, manager, action=None):
     if action == 'save_map':
-        if menu_save_map(context, session.map_obj):
+        if menu_save_map(manager, session.map_obj):
             session.map_obj.dirty = False
     elif action == 'load_map':
         def _on_loaded(m):
@@ -431,8 +422,7 @@ def handle_file_ops(session, context, action=None):
                 session.map_obj.dirty = False
                 session.camera_x, session.camera_y = 0, 0
                 session.cursor_x, session.cursor_y = 0, 0
-                context.invalidate_cache()
-        context.manager.push(LoadMapState(context.manager, context, session.view_width, session.view_height, _on_loaded))
+        manager.flow.push_load_map_wizard(session.view_width, session.view_height, _on_loaded)
     elif action == 'new_map':
         def _on_new(m):
              if m:
@@ -440,62 +430,61 @@ def handle_file_ops(session, context, action=None):
                  session.map_obj.dirty = False
                  session.camera_x, session.camera_y = 0, 0
                  session.cursor_x, session.cursor_y = 0, 0
-                 context.invalidate_cache()
-        context.manager.push(NewMapState(context.manager, context, session.view_width, session.view_height, _on_new))
+        manager.flow.push_new_map_wizard(session.view_width, session.view_height, _on_new)
     elif action == 'export_image':
-        context.manager.push(ExportMapState(context.manager, context, session.map_obj))
+        manager.flow.push_export_wizard(session.map_obj)
 
-def handle_macro_toggle(session, context, action=None):
+def handle_macro_toggle(session, manager, action=None):
     ts = session.tool_state
     if ts.recording:
         ts.recording = False
         def on_name(name):
             if name: 
                 ts.macros[name] = list(ts.current_macro_actions)
-                show_message(context, f"Macro '{name}' saved", notify=True)
-        context.manager.push(TextInputState(context.manager, context, "Enter name for macro: ", on_name))
+                show_message(manager, f"Macro '{name}' saved", notify=True)
+        manager.flow.push_text_input("Enter name for macro: ", on_name)
     else:
         ts.recording = True
         ts.current_macro_actions = []
-        show_message(context, "Recording Macro...", notify=True)
+        show_message(manager, "Recording Macro...", notify=True)
 
-def handle_macro_play(session, context, action=None):
+def handle_macro_play(session, manager, action=None):
     ts = session.tool_state
     def on_play(name):
         if name in ts.macros:
             session.action_queue.extendleft(reversed(ts.macros[name]))
-    context.manager.push(TextInputState(context.manager, context, "Enter macro name to play: ", on_play))
+    manager.flow.push_text_input("Enter macro name to play: ", on_play)
 
-def handle_open_context_menu(session, context, action=None):
+def handle_open_context_menu(session, manager, action=None):
     from menu.base import ContextMenuState
     from menu.generation import AdvancedGenerationState
     
     mouse_pos = pygame.mouse.get_pos()
     
     def on_flood_fill():
-        handle_flood_fill(session, context, 'flood_fill')
+        handle_flood_fill(session, manager, 'flood_fill')
 
     def set_tool(mode):
         session.tool_state.mode = mode
         session.tool_state.start_point = None
-        show_message(context, f"Switched to {mode.capitalize()} Tool", notify=True)
+        show_message(manager, f"Switched to {mode.capitalize()} Tool", notify=True)
 
     has_selection = session.selection_start is not None and session.selection_end is not None
 
     if has_selection:
         options = [
-            ("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')),
-            ("Rotate Selection", lambda: handle_rotate_selection_action(session, context)),
-            ("Clear Area", lambda: handle_selection(session, context, 'clear_area')),
-            ("Advanced Gen", lambda: context.manager.push(AdvancedGenerationState(context.manager, context, session))),
-            ("Deselect", lambda: handle_selection(session, context, 'clear_selection')),
+            ("Copy Selection", lambda: handle_selection(session, manager, 'copy_selection')),
+            ("Rotate Selection", lambda: handle_rotate_selection_action(session, manager)),
+            ("Clear Area", lambda: handle_selection(session, manager, 'clear_area')),
+            ("Advanced Gen", lambda: manager.flow.push_advanced_gen(session)),
+            ("Deselect", lambda: handle_selection(session, manager, 'clear_selection')),
             ("---", None),
             ("Point Tool", lambda: set_tool('place')),
         ]
     else:
         def draw_long(direction):
             session.draw_long_line(direction, session.cursor_x, session.cursor_y)
-            show_message(context, f"Long {direction.capitalize()} Line Placed", notify=True)
+            show_message(manager, f"Long {direction.capitalize()} Line Placed", notify=True)
 
         options = [
             ("Point Tool", lambda: set_tool('place')),
@@ -507,53 +496,54 @@ def handle_open_context_menu(session, context, action=None):
             ("Select Tool", lambda: set_tool('select')),
             ("Flood Fill", on_flood_fill),
             ("---", None),
-            ("Toggle Measurement", lambda: handle_measurement_toggle(session, context)),
-            ("Measurement Settings", lambda: handle_measurement_configure(session, context)),
+            ("Toggle Measurement", lambda: handle_measurement_toggle(session, manager)),
+            ("Measurement Settings", lambda: handle_measurement_configure(session, manager)),
             ("---", None),
-            ("Go To Coordinates", lambda: handle_goto_coords(session, context)),
-            ("Pick Tile", lambda: handle_tile_management(session, context, 'pick_tile')),
-            ("Toggle Palette", lambda: handle_toggle_palette(session, context)),
-            ("Undo", lambda: handle_undo_redo(session, context, 'undo')),
-            ("Redo", lambda: handle_undo_redo(session, context, 'redo')),
-            ("Save Map", lambda: handle_file_ops(session, context, 'save_map')),
+            ("Go To Coordinates", lambda: handle_goto_coords(session, manager)),
+            ("Pick Tile", lambda: handle_tile_management(session, manager, 'pick_tile')),
+            ("Toggle Palette", lambda: handle_toggle_palette(session, manager)),
+            ("Undo", lambda: handle_undo_redo(session, manager, 'undo')),
+            ("Redo", lambda: handle_undo_redo(session, manager, 'redo')),
+            ("Save Map", lambda: handle_file_ops(session, manager, 'save_map')),
         ]
 
-    context.manager.push(ContextMenuState(context.manager, context, options, mouse_pos))
+    manager.push(ContextMenuState(manager, manager.flow.renderer, options, mouse_pos))
 
-def handle_zoom(session, context, action=None):
-    old_ts = context.tile_size
+def handle_zoom(session, manager, action=None):
+    renderer = manager.flow.renderer
+    old_ts = renderer.tile_size
     if action == 'zoom_in':
-        context.tile_size = min(100, context.tile_size + 2)
+        renderer.tile_size = min(100, renderer.tile_size + 2)
     elif action == 'zoom_out':
-        context.tile_size = max(4, context.tile_size - 2)
+        renderer.tile_size = max(4, renderer.tile_size - 2)
     
-    if old_ts != context.tile_size:
+    if old_ts != renderer.tile_size:
         # Recalculate view width and height based on new tile size and FIXED viewport pixel area
-        session.view_width = session.viewport_px_w // context.tile_size
-        session.view_height = session.viewport_px_h // context.tile_size
+        session.view_width = session.viewport_px_w // renderer.tile_size
+        session.view_height = session.viewport_px_h // renderer.tile_size
         
         # Ensure camera and cursor remain valid
         session.camera_x = max(0, min(session.camera_x, session.map_obj.width - session.view_width))
         session.camera_y = max(0, min(session.camera_y, session.map_obj.height - session.view_height))
         
-        context.invalidate_cache()
-        show_message(context, f"Zoom: {context.tile_size}px", notify=True)
+        renderer.invalidate_cache()
+        show_message(manager, f"Zoom: {renderer.tile_size}px", notify=True)
 
-def handle_measurement_toggle(session, context, action=None):
+def handle_measurement_toggle(session, manager, action=None):
     session.tool_state.measurement_active = not session.tool_state.measurement_active
     status = "ON" if session.tool_state.measurement_active else "OFF"
-    show_message(context, f"Measurement Mode: {status}", notify=True)
+    show_message(manager, f"Measurement Mode: {status}", notify=True)
 
-def handle_add_measurement_point(session, context, action=None):
+def handle_add_measurement_point(session, manager, action=None):
     ts = session.tool_state
     if not ts.measurement_active: return
     
     ts.measurement_config['points'].append((session.cursor_x, session.cursor_y))
     if len(ts.measurement_config['points']) > 10:
         ts.measurement_config['points'].pop(0)
-    show_message(context, f"Point added: {session.cursor_x}, {session.cursor_y}", notify=True)
+    show_message(manager, f"Point added: {session.cursor_x}, {session.cursor_y}", notify=True)
 
-def handle_goto_coords(session, context, action=None):
+def handle_goto_coords(session, manager, action=None):
     def on_coords(inp):
         if not inp: return
         try:
@@ -574,13 +564,13 @@ def handle_goto_coords(session, context, action=None):
                 session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.cursor_x - session.view_width // 2))
                 session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.cursor_y - session.view_height // 2))
                 
-                show_message(context, f"Jumped to {session.cursor_x}, {session.cursor_y}", notify=True)
+                show_message(manager, f"Jumped to {session.cursor_x}, {session.cursor_y}", notify=True)
         except:
-            show_message(context, "Invalid coordinates. Use 'X, Y'", notify=True)
+            show_message(manager, "Invalid coordinates. Use 'X, Y'", notify=True)
 
-    context.manager.push(TextInputState(context.manager, context, "Go to (X, Y): ", on_coords))
+    manager.flow.push_text_input("Go to (X, Y): ", on_coords)
 
-def handle_measurement_configure(session, context, action=None):
+def handle_measurement_configure(session, manager, action=None):
     ts = session.tool_state
     
     # Prepare fields for FormState
@@ -616,10 +606,9 @@ def handle_measurement_configure(session, context, action=None):
             if cp_str == 'y' or cp_str == 'yes':
                 ts.measurement_config['points'] = []
             
-            show_message(context, "Measurement Config Saved", notify=True)
+            show_message(manager, "Measurement Config Saved", notify=True)
             
-    from menu.base import FormState
-    context.manager.push(FormState(context.manager, context, "Measurement Settings", fields, on_save))
+    manager.flow.push_form("Measurement Settings", fields, on_save)
 
 def get_action_dispatcher():
     return {

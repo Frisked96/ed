@@ -5,18 +5,26 @@ from utils import get_key_name
 
 def build_key_map(bindings):
     key_map = {}
-    for action, key_name in bindings.items():
-        if not key_name or key_name == 'None':
+    for action, key_val in bindings.items():
+        if not key_val or key_val == 'None':
             continue
         
-        if len(key_name) > 1:
-            key_lookup = key_name.lower()
+        if isinstance(key_val, list):
+            keys = key_val
         else:
-            key_lookup = key_name
-        
-        if key_lookup not in key_map:
-            key_map[key_lookup] = []
-        key_map[key_lookup].append(action)
+            keys = [key_val]
+
+        for key_name in keys:
+            if not key_name or key_name == 'None': continue
+
+            if len(key_name) > 1:
+                key_lookup = key_name.lower()
+            else:
+                key_lookup = key_name
+            
+            if key_lookup not in key_map:
+                key_map[key_lookup] = []
+            key_map[key_lookup].append(action)
     return key_map
 
 def get_map_statistics(map_obj):
@@ -343,3 +351,63 @@ class FormState(State):
                 surf = self.context.font.render(f"{label}: {display_val}", True, color)
                 surface.blit(surf, (bx + 20, y))
             y += self.context.tile_size + 10
+
+class ContextMenuState(State):
+    def __init__(self, manager, context, options, screen_pos):
+        super().__init__(manager)
+        self.context = context
+        self.options = options
+        self.screen_pos = screen_pos
+        self.selected_idx = -1
+        
+        font = context.font
+        max_w = 0
+        for label, _ in options:
+            w = font.size(label)[0]
+            if w > max_w: max_w = w
+        self.width = max_w + 40
+        self.height = len(options) * 30 + 10
+
+        x, y = screen_pos
+        if x + self.width > context.width: x = context.width - self.width
+        if y + self.height > context.height: y = context.height - self.height
+        self.rect = pygame.Rect(x, y, self.width, self.height)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            mx, my = event.pos
+            if self.rect.collidepoint(mx, my):
+                self.selected_idx = (my - self.rect.y - 5) // 30
+            else:
+                self.selected_idx = -1
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            if self.rect.collidepoint(mx, my) and 0 <= self.selected_idx < len(self.options):
+                cb = self.options[self.selected_idx][1]
+                self.manager.pop()
+                if cb: cb()
+            else:
+                self.manager.pop()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE: self.manager.pop()
+
+    def draw(self, surface):
+        shadow = self.rect.copy()
+        shadow.move_ip(4, 4)
+        s = pygame.Surface((shadow.width, shadow.height), pygame.SRCALPHA)
+        s.fill((0, 0, 0, 100))
+        surface.blit(s, shadow)
+
+        pygame.draw.rect(surface, (40, 40, 40), self.rect)
+        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)
+
+        font = self.context.font
+        for i, (label, _) in enumerate(self.options):
+            r = pygame.Rect(self.rect.x, self.rect.y + 5 + i * 30, self.width, 30)
+            color = (200, 200, 200)
+            if i == self.selected_idx:
+                pygame.draw.rect(surface, (60, 60, 80), r)
+                color = (255, 255, 255)
+            
+            surf = font.render(label, True, color)
+            surface.blit(surf, (self.rect.x + 20, self.rect.y + 5 + i * 30 + (30 - surf.get_height()) // 2))

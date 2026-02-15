@@ -7,7 +7,7 @@
   "move_cursor_down": "down",
   "move_cursor_left": "left",
   "move_cursor_right": "right",
-  "place_tile": "space",
+  "place_tile": ["space", "mouse 1"],
   "cycle_tile": "c",
   "pick_tile": "t",
   "flood_fill": "f",

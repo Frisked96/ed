@@ -52,6 +52,9 @@ def get_key_name(key):
     if key is None:
         return "NONE"
 
+    if isinstance(key, list):
+        return "/".join(get_key_name(k) for k in key)
+
     if isinstance(key, str):
         return key.upper()
 

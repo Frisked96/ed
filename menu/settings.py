@@ -24,12 +24,12 @@ class ControlSettingsState(State):
         self.scroll_offset = 0
 
     def handle_event(self, event):
-        if event.type != pygame.KEYDOWN: return
-        
         if self.machine.current_state == ControlSettingsMachine.browsing:
-            self._handle_browsing(event)
+            if event.type == pygame.KEYDOWN:
+                self._handle_browsing(event)
         elif self.machine.current_state == ControlSettingsMachine.capturing:
-            self._handle_capturing(event)
+            if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
+                self._handle_capturing(event)
 
     def _handle_browsing(self, event):
         key = event.key
@@ -47,26 +47,37 @@ class ControlSettingsState(State):
             self.manager.pop()
 
     def _handle_capturing(self, event):
-        if event.key == pygame.K_ESCAPE:
-            self.machine.cancel_capture()
-            return
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.machine.cancel_capture()
+                return
 
-        # Ignore modifier keys
-        if event.key in [pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_LCTRL, pygame.K_RCTRL, 
-                         pygame.K_LALT, pygame.K_RALT, pygame.K_LGUI, pygame.K_RGUI, pygame.K_CAPSLOCK]:
-            return
+            # Ignore modifier keys
+            if event.key in [pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_LCTRL, pygame.K_RCTRL, 
+                            pygame.K_LALT, pygame.K_RALT, pygame.K_LGUI, pygame.K_RGUI, pygame.K_CAPSLOCK]:
+                return
 
-        action = self.actions[self.selected_idx]
-        key_name = pygame.key.name(event.key)
-        
-        # Use unicode for single-character keys to respect Shift/Caps Lock (e.g., 'A' instead of 'a', '!' instead of '1')
-        # But preserve special key names like 'space', 'return', 'tab'
-        if len(key_name) == 1 and event.unicode:
-            key_name = event.unicode
+            action = self.actions[self.selected_idx]
+            key_name = pygame.key.name(event.key)
+            
+            # Use unicode for single-character keys to respect Shift/Caps Lock (e.g., 'A' instead of 'a', '!' instead of '1')
+            # But preserve special key names like 'space', 'return', 'tab'
+            if len(key_name) == 1 and event.unicode:
+                key_name = event.unicode
 
-        self.bindings[action] = key_name
-        save_config(self.bindings)
-        self.machine.finish_capture()
+            self.bindings[action] = key_name
+            save_config(self.bindings)
+            self.machine.finish_capture()
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            action = self.actions[self.selected_idx]
+            # Map button index to string identifier
+            # 1: Left, 2: Middle, 3: Right, 4: Scroll Up, 5: Scroll Down
+            key_name = f"mouse {event.button}"
+            
+            self.bindings[action] = key_name
+            save_config(self.bindings)
+            self.machine.finish_capture()
 
     def draw(self, surface):
         self.context.screen.fill((0, 0, 0))

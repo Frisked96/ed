@@ -13,7 +13,7 @@ def load_config():
         'move_view_left': 'a', 'move_view_right': 'd',
         'move_cursor_up': 'up', 'move_cursor_down': 'down',
         'move_cursor_left': 'left', 'move_cursor_right': 'right',
-        'place_tile': 'e', 'cycle_tile': 'c', 'pick_tile': 't',
+        'place_tile': ['e', 'mouse 1', 'space'], 'cycle_tile': 'c', 'pick_tile': 't',
         'flood_fill': 'f', 'line_tool': 'i', 'rect_tool': 'r',
         'circle_tool': 'b', 'select_start': 'v', 'clear_selection': 'V',
         'copy_selection': 'y',
@@ -35,6 +35,7 @@ def load_config():
         'toggle_snap': 'G', 'set_measure': 'N',
         'toggle_palette': 'tab',
         'toggle_autotile': 'A',
+        'open_context_menu': 'mouse 3',
         'quit': 'q',
     }
 

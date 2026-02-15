@@ -14,6 +14,18 @@ class InputHandler:
         if key in self.held_keys:
             self.held_keys.remove(key)
 
+    def check_held_keys(self):
+        # Sync held_keys with actual hardware state to prevent stuck keys
+        # especially when modal dialogs swallow KEYUP events
+        keys_pressed = pygame.key.get_pressed()
+        to_remove = []
+        for key in self.held_keys:
+            if key < len(keys_pressed) and not keys_pressed[key]:
+                to_remove.append(key)
+        
+        for key in to_remove:
+            self.held_keys.remove(key)
+
     def process_key(self, key, unicode_char, renderer):
         is_repeat = key in self.held_keys
         self.held_keys.add(key)
@@ -41,6 +53,30 @@ class InputHandler:
             if is_repeat and action == 'place_tile' and self.session.tool_state.mode != 'place':
                 continue
             self.dispatch(action, renderer)
+
+    def process_mouse(self, button, renderer):
+        # Map mouse button index to string identifier
+        key_name = f"mouse {button}"
+        
+        # Look up actions for this mouse button
+        actions = self.session.key_map.get(key_name, [])
+        
+        for action in actions:
+            self.dispatch(action, renderer)
+
+    def handle_mouse_hold(self, renderer):
+        # Support continuous painting (hold to paint) for mouse
+        # Only applies to 'place_tile' in 'place' mode
+        pressed = pygame.mouse.get_pressed()
+        # pressed is (left, middle, right) which maps to buttons 1, 2, 3
+        for i, is_pressed in enumerate(pressed):
+            if is_pressed:
+                button = i + 1
+                key_name = f"mouse {button}"
+                actions = self.session.key_map.get(key_name, [])
+                for action in actions:
+                    if action == 'place_tile' and self.session.tool_state.mode == 'place':
+                         self.dispatch(action, renderer)
 
     def dispatch(self, action, context):
         if action in self.dispatcher:

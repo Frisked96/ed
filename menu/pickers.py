@@ -90,5 +90,5 @@ class TilePickerState(State):
             if i == self.selected_idx:
                 pygame.draw.rect(surface, (255, 255, 0), (px-2, py-2, self.context.tile_size+4, self.context.tile_size+4), 2)
             
-            glyph = self.context.get_glyph(tile.char, tile.color)
+            glyph = self.context.get_glyph(tile.id)
             surface.blit(glyph, (px, py))

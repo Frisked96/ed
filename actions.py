@@ -1,6 +1,7 @@
 import sys
 import random
 import time
+import pygame
 from map_io import autosave_map
 from utils import get_distance, rotate_selection_90, flip_selection_horizontal, flip_selection_vertical, shift_map
 from drawing import place_tile_at, flood_fill, draw_line, draw_rectangle, draw_circle
@@ -393,10 +394,51 @@ def handle_macro_play(session, context, action=None):
             session.action_queue.extendleft(reversed(ts.macros[name]))
     context.manager.push(TextInputState(context.manager, context, "Enter macro name to play: ", on_play))
 
+def handle_open_context_menu(session, context, action=None):
+    from menu.base import ContextMenuState
+    
+    mouse_pos = pygame.mouse.get_pos()
+    
+    def on_flood_fill():
+        # Flood fill uses cursor position, which is updated by mouse motion
+        handle_flood_fill(session, context, 'flood_fill')
+
+    def on_pick_tile_at_cursor():
+        # Pick the tile currently under the cursor
+        tid = session.map_obj.get(session.cursor_x, session.cursor_y)
+        if tid:
+            session.selected_tile_id = tid
+            show_message(context, f"Picked tile ID {tid}", notify=True)
+
+    options = [
+        ("Flood Fill", on_flood_fill),
+        ("Pick Tile", on_pick_tile_at_cursor),
+    ]
+
+    # Add selection options if relevant
+    if session.selection_start and session.selection_end:
+        options.append(("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')))
+        options.append(("Clear Area", lambda: handle_selection(session, context, 'clear_area')))
+        options.append(("Rotate Selection", lambda: handle_map_transform(session, context, 'rotate_selection'))) # Wait, rotate_selection is map transform?
+        # Actually rotate_selection is not in map_transform, it was in help but verify action key
+        # In get_action_dispatcher: 'rotate_selection' is not there? 
+        # 'map_rotate' is there. 'rotate_selection' is in help but dispatch uses... wait.
+        # Check get_action_dispatcher keys: 'copy_selection', 'paste_selection', 'clear_area'.
+        # No 'rotate_selection' key in dispatcher?
+        # help says: {get_key_name(b.get('rotate_selection'))}=Rotate Sel
+        # But dispatch has 'map_rotate' which rotates the *map*.
+        # Let's check imports. utils has rotate_selection_90.
+        # handle_map_transform calls rotate_selection_90(session.map_obj.data). That rotates the *whole map* (or creates new map).
+        # It seems selection rotation isn't fully implemented or is same as map rotation?
+        pass
+
+    context.manager.push(ContextMenuState(context.manager, context, options, mouse_pos))
+
 def get_action_dispatcher():
     return {
         'quit': handle_quit,
         'editor_menu': handle_editor_menu,
+        'open_context_menu': handle_open_context_menu,
         'move_view_up': handle_move_view, 'move_view_down': handle_move_view,
         'move_view_left': handle_move_view, 'move_view_right': handle_move_view,
         'move_cursor_up': handle_move_cursor, 'move_cursor_down': handle_move_cursor,

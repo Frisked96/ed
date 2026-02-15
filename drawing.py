@@ -56,7 +56,8 @@ def flood_fill(map_obj, x, y, new_tile_id):
                     visited.add((nx, ny))
                     queue.append((nx, ny))
 
-def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, tool_state=None):
+def get_line_points(x0, y0, x1, y1):
+    points = []
     dx = abs(x1 - x0)
     dy = abs(y1 - y0)
     sx = 1 if x0 < x1 else -1
@@ -65,7 +66,7 @@ def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, 
 
     x, y = x0, y0
     while True:
-        place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+        points.append((x, y))
         if x == x1 and y == y1: break
         e2 = 2 * err
         if e2 > -dy:
@@ -74,23 +75,72 @@ def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, 
         if e2 < dx:
             err += dx
             y += sy
+    return points
 
-def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
+def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, tool_state=None):
+    for x, y in get_line_points(x0, y0, x1, y1):
+        place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+
+def get_rect_points(x0, y0, x1, y1, filled=False):
+    points = []
     min_x, max_x = (x0, x1) if x0 < x1 else (x1, x0)
     min_y, max_y = (y0, y1) if y0 < y1 else (y1, y0)
 
     if filled:
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                points.append((x, y))
+    else:
+        for x in range(min_x, max_x + 1):
+            points.append((x, min_y))
+            points.append((x, max_y))
+        for y in range(min_y + 1, max_y):
+            points.append((min_x, y))
+            points.append((max_x, y))
+    return points
+
+def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
+    if filled:
+        # Optimized filled draw
+        min_x, max_x = (x0, x1) if x0 < x1 else (x1, x0)
+        min_y, max_y = (y0, y1) if y0 < y1 else (y1, y0)
         y0_f, y1_f = max(0, min_y), min(map_obj.height, max_y + 1)
         x0_f, x1_f = max(0, min_x), min(map_obj.width, max_x + 1)
         map_obj.data[y0_f:y1_f, x0_f:x1_f] = tile_id
         map_obj.dirty = True
     else:
-        for x in range(min_x, max_x + 1):
-            place_tile_at(map_obj, x, min_y, tile_id, brush_size, brush_shape, tool_state)
-            place_tile_at(map_obj, x, max_y, tile_id, brush_size, brush_shape, tool_state)
-        for y in range(min_y + 1, max_y):
-            place_tile_at(map_obj, min_x, y, tile_id, brush_size, brush_shape, tool_state)
-            place_tile_at(map_obj, max_x, y, tile_id, brush_size, brush_shape, tool_state)
+        for x, y in get_rect_points(x0, y0, x1, y1, filled=False):
+            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+
+def get_circle_points(cx, cy, radius, filled=False):
+    points = []
+    if filled:
+        # Note: Filled circle usually handled by mask optimization in main draw,
+        # but for preview we might need points. However, user asked for hollow preview.
+        # We'll implement a basic filled circle point generator just in case.
+        for y in range(cy - radius, cy + radius + 1):
+            for x in range(cx - radius, cx + radius + 1):
+                if (x - cx)**2 + (y - cy)**2 <= radius**2:
+                    points.append((x, y))
+    else:
+        x, y = radius, 0
+        err = 0
+        while x >= y:
+            p = [
+                (cx + x, cy + y), (cx + y, cy + x),
+                (cx - y, cy + x), (cx - x, cy + y),
+                (cx - x, cy - y), (cx - y, cy - x),
+                (cx + y, cy - x), (cx + x, cy - y)
+            ]
+            points.extend(p)
+
+            y += 1
+            if err <= 0:
+                err += 2*y + 1
+            else:
+                x -= 1
+                err += 2*(y - x) + 1
+    return points
 
 def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
     if filled:
@@ -102,24 +152,8 @@ def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_sh
         map_obj.data[y0:y1, x0:x1][mask] = tile_id
         map_obj.dirty = True
     else:
-        x, y = radius, 0
-        err = 0
-        while x >= y:
-            points = [
-                (cx + x, cy + y), (cx + y, cy + x),
-                (cx - y, cy + x), (cx - x, cy + y),
-                (cx - x, cy - y), (cx - y, cy - x),
-                (cx + y, cy - x), (cx + x, cy - y)
-            ]
-            for px, py in points:
-                place_tile_at(map_obj, px, py, tile_id, brush_size, brush_shape, tool_state)
-
-            y += 1
-            if err <= 0:
-                err += 2*y + 1
-            else:
-                x -= 1
-                err += 2*(y - x) + 1
+        for x, y in get_circle_points(cx, cy, radius, filled=False):
+            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
 
 def draw_pattern_rectangle(map_obj, x0, y0, x1, y1, pattern):
     # Pattern also needs to be updated to support IDs if it's not already

@@ -19,9 +19,9 @@
     "char": "#",
     "name": "Wall",
     "color": [
-      200,
-      200,
-      200
+      255,
+      0,
+      0
     ],
     "bg_color": null,
     "blocks_movement": true,
@@ -79,7 +79,7 @@
   {
     "id": 6,
     "char": "A",
-    "name": "Custom",
+    "name": "test",
     "color": [
       0,
       0,

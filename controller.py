@@ -1,6 +1,6 @@
 import pygame
 import sys
-from menus import build_key_map
+from menu import build_key_map
 from actions import get_action_dispatcher
 
 class InputHandler:
@@ -8,8 +8,16 @@ class InputHandler:
         self.session = session
         self.dispatcher = get_action_dispatcher()
         self.session.key_map = build_key_map(session.bindings)
+        self.held_keys = set()
+
+    def process_keyup(self, key):
+        if key in self.held_keys:
+            self.held_keys.remove(key)
 
     def process_key(self, key, unicode_char, renderer):
+        is_repeat = key in self.held_keys
+        self.held_keys.add(key)
+
         if key == pygame.K_ESCAPE:
             ts = self.session.tool_state
             if ts.start_point: ts.start_point = None
@@ -29,6 +37,9 @@ class InputHandler:
             actions = self.session.key_map.get(key_name, [])
 
         for action in actions:
+            # Prevent key repeat for place_tile unless in 'place' mode (painting)
+            if is_repeat and action == 'place_tile' and self.session.tool_state.mode != 'place':
+                continue
             self.dispatch(action, renderer)
 
     def dispatch(self, action, context):

@@ -20,6 +20,8 @@ class EditorState(State):
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             self.input_handler.process_key(event.key, event.unicode, self.renderer)
+        elif event.type == pygame.KEYUP:
+            self.input_handler.process_keyup(event.key)
         
         elif event.type == pygame.VIDEORESIZE:
             self.renderer.update_dimensions()

@@ -54,9 +54,9 @@ def cellular_automata_cave(map_obj, iterations=5, wall_id=1, floor_id=0,
         grid[:, -1] = 1
 
     # Write final grid to map object
-    for y in range(height):
-        for x in range(width):
-            map_obj.set(x, y, wall_id if grid[y, x] else floor_id)
+    map_obj.push_undo()
+    map_obj.data[:] = np.where(grid, wall_id, floor_id)
+    map_obj.dirty = True
     
     return seed
 
@@ -92,11 +92,14 @@ def perlin_noise_generation(map_obj, tile_ids, scale=10.0, octaves=4,
     else:
         samples = np.zeros_like(samples)
 
-    for y in range(height):
-        for x in range(width):
-            idx = int(samples[y, x] * len(tile_ids))
-            idx = min(idx, len(tile_ids) - 1)
-            map_obj.set(x, y, tile_ids[idx])
+    # Write to map object using vectorized indexing
+    map_obj.push_undo()
+    indices = (samples * len(tile_ids)).astype(np.uint16)
+    indices = np.clip(indices, 0, len(tile_ids) - 1)
+    
+    tile_ids_arr = np.array(tile_ids, dtype=np.uint16)
+    map_obj.data[:] = tile_ids_arr[indices]
+    map_obj.dirty = True
     
     return seed
 
@@ -121,8 +124,9 @@ def voronoi_generation(map_obj, tile_ids, num_points=20, seed=None):
 
     point_ids = rng.choice(tile_ids, size=num_points)
 
-    for y in range(height):
-        for x in range(width):
-            map_obj.set(x, y, point_ids[region_indices[y, x]])
+    # Vectorized write
+    map_obj.push_undo()
+    map_obj.data[:] = point_ids[region_indices].astype(np.uint16)
+    map_obj.dirty = True
     
     return seed

@@ -11,6 +11,7 @@ def main():
     # 2. Setup Renderer & State Manager
     renderer = Renderer()
     state_manager = StateManager(renderer.screen)
+    renderer.manager = state_manager
     
     # 3. Push Main Menu State
     menu_state = MainMenuState(state_manager, renderer)

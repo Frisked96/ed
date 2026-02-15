@@ -1,16 +1,15 @@
 import sys
 import random
 import time
-import pygame
-from map_io import load_config, autosave_map
-from utils import get_distance, rotate_selection_90, flip_selection_horizontal, flip_selection_vertical, shift_map, get_user_input, get_user_confirmation
+from map_io import autosave_map
+from utils import get_distance, rotate_selection_90, flip_selection_horizontal, flip_selection_vertical, shift_map
 from drawing import place_tile_at, flood_fill, draw_line, draw_rectangle, draw_circle
-from menus import (
+from menu import (
     menu_save_map, menu_autosave_settings, menu_editor_pause,
-    menu_define_brush, menu_pick_tile, NewMapState, LoadMapState, ExportMapState, menu_resize_map,
-    menu_set_seed, menu_statistics, menu_random_generation,
+    menu_define_brush, menu_define_pattern, NewMapState, LoadMapState, ExportMapState, menu_resize_map,
+    menu_statistics, menu_random_generation,
     menu_perlin_generation, menu_voronoi_generation,
-    build_key_map
+    MessageState, ConfirmationState, TextInputState, HelpState
 )
 from core import Map
 from tiles import REGISTRY
@@ -37,63 +36,50 @@ def show_message(context, text, notify=False):
     if notify and hasattr(context, 'add_notification'):
         context.add_notification(text)
         return
-
-    # Context is now Renderer
-    screen = context.screen
-    font = context.font
-
-    text_surf = font.render(text, True, (255, 255, 255))
-    rect = text_surf.get_rect(center=(context.width // 2, context.height // 2))
-    bg_rect = rect.inflate(20, 20)
-
-    pygame.draw.rect(screen, (0, 0, 0), bg_rect)
-    pygame.draw.rect(screen, (255, 255, 255), bg_rect, 1)
-    screen.blit(text_surf, rect)
-    pygame.display.flip()
     
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN or event.type == pygame.QUIT:
-                waiting = False
-        context.clock.tick(10)
+    context.manager.push(MessageState(context.manager, context, text))
 
 def handle_quit(session, context, action=None):
     if session.map_obj.dirty:
-        if not get_user_confirmation(context, 10, 2, "Unsaved! Quit anyway? (y/n): "):
-            return
-    session.running = False
+        def on_confirm(confirmed):
+            if confirmed: session.running = False
+        context.manager.push(ConfirmationState(context.manager, context, "Unsaved! Quit anyway? (y/n): ", on_confirm))
+    else:
+        session.running = False
 
 def handle_editor_menu(session, context, action=None):
-    choice = menu_editor_pause(context)
-    if choice == "Save Map":
-        if menu_save_map(context, session.map_obj):
-            session.map_obj.dirty = False
-    elif choice == "Load Map":
-        loaded = menu_load_map(context, session.view_width, session.view_height)
-        if loaded:
-            session.map_obj.push_undo()
-            session.map_obj = loaded
-            session.map_obj.dirty = False
-            session.camera_x, session.camera_y = 0, 0
-            session.cursor_x, session.cursor_y = 0, 0
-            context.invalidate_cache()
-    elif choice == "Macro Manager":
-        menu_macros(context, session.tool_state)
-    elif choice == "Auto-Tiling Manager":
-        # Auto tiling manager heavily depends on character mapping
-        # We might need to disable it or stub it if it breaks
-        # For now, let's keep it but warn it might be broken
-        pass
-    elif choice == "Autosave Settings":
-        menu_autosave_settings(context, session.tool_state)
-    elif choice == "Exit to Main Menu":
-        if session.map_obj.dirty:
-            if get_user_confirmation(context, 10, 2, "Unsaved! Exit anyway? (y/n): "):
-                session.running = False
-        else: session.running = False
-    elif choice == "Quit Editor":
-        sys.exit(0)
+    def on_choice(choice):
+        if choice == "Save Map":
+            if menu_save_map(context, session.map_obj):
+                session.map_obj.dirty = False
+        elif choice == "Load Map":
+            def _on_loaded(m):
+                if m:
+                    session.map_obj.push_undo()
+                    session.map_obj = m
+                    session.map_obj.dirty = False
+                    session.camera_x, session.camera_y = 0, 0
+                    session.cursor_x, session.cursor_y = 0, 0
+                    context.invalidate_cache()
+            context.manager.push(LoadMapState(context.manager, context, session.view_width, session.view_height, _on_loaded))
+        elif choice == "Macro Manager":
+            from menu.managers import MacroManagerState
+            context.manager.push(MacroManagerState(context.manager, context, session.tool_state))
+        elif choice == "Auto-Tiling Manager":
+            from menu.managers import AutoTilingManagerState
+            context.manager.push(AutoTilingManagerState(context.manager, context, session.tool_state))
+        elif choice == "Autosave Settings":
+            menu_autosave_settings(context, session.tool_state)
+        elif choice == "Exit to Main Menu":
+            if session.map_obj.dirty:
+                def on_confirm(confirmed):
+                    if confirmed: session.running = False
+                context.manager.push(ConfirmationState(context.manager, context, "Unsaved! Exit anyway? (y/n): ", on_confirm))
+            else: session.running = False
+        elif choice == "Quit Editor":
+            sys.exit(0)
+            
+    menu_editor_pause(context, on_choice)
 
 def handle_move_view(session, context, action=None):
     if action == 'move_view_up':
@@ -139,20 +125,29 @@ def handle_place_tile(session, context, action=None):
         if ts.start_point is None:
             ts.start_point = (session.cursor_x, session.cursor_y)
         else:
-            session.map_obj.push_undo()
             if ts.mode == 'line':
+                session.map_obj.push_undo()
                 draw_line(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
+                ts.start_point = None
+                ts.edits_since_save += 1
+                check_autosave(session, context)
             elif ts.mode == 'rect':
-                filled = get_user_confirmation(context, 10, 2, "Filled? (y/n): ")
-                draw_rectangle(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
+                def on_rect_confirm(filled):
+                    session.map_obj.push_undo()
+                    draw_rectangle(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
+                    ts.start_point = None
+                    ts.edits_since_save += 1
+                    check_autosave(session, context)
+                context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_rect_confirm))
             elif ts.mode == 'circle':
-                radius = int(get_distance(ts.start_point, (session.cursor_x, session.cursor_y)))
-                filled = get_user_confirmation(context, 10, 2, "Filled? (y/n): ")
-                draw_circle(session.map_obj, ts.start_point[0], ts.start_point[1], radius, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
-            
-            ts.start_point = None
-            ts.edits_since_save += 1
-            check_autosave(session, context)
+                def on_circle_confirm(filled):
+                    session.map_obj.push_undo()
+                    radius = int(get_distance(ts.start_point, (session.cursor_x, session.cursor_y)))
+                    draw_circle(session.map_obj, ts.start_point[0], ts.start_point[1], radius, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
+                    ts.start_point = None
+                    ts.edits_since_save += 1
+                    check_autosave(session, context)
+                context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_circle_confirm))
 
 def handle_flood_fill(session, context, action=None):
     old_char = session.map_obj.get(session.cursor_x, session.cursor_y)
@@ -208,8 +203,6 @@ def handle_map_transform(session, context, action=None):
     session.map_obj.push_undo()
     if action == 'map_rotate':
         new_data = rotate_selection_90(session.map_obj.data)
-        # Re-creating map object loses reference in session? 
-        # Actually session.map_obj = Map(...) works but we need to keep undo stack
         session.map_obj = Map(session.map_obj.height, session.map_obj.width, new_data, undo_stack=session.undo_stack)
         session.camera_x = session.camera_y = 0
     elif action == 'map_flip_h': session.map_obj.data = flip_selection_horizontal(session.map_obj.data)
@@ -249,33 +242,37 @@ def handle_tile_management(session, context, action=None):
         session.selected_tile_id = all_tiles[next_idx].id
         
     elif action == 'pick_tile':
-        picked_id = menu_pick_tile(context)
-        if picked_id is not None:
-            session.selected_tile_id = picked_id
+        def _on_picked(picked_id):
+            if picked_id is not None:
+                session.selected_tile_id = picked_id
+        from menu.pickers import TilePickerState
+        context.manager.push(TilePickerState(context.manager, context, _on_picked))
             
     elif action == 'define_tiles':
-        menu_define_tiles(context)
+        from menu.registry import TileRegistryState
+        context.manager.push(TileRegistryState(context.manager, context))
 
 def handle_replace_all(session, context, action=None):
-    old_c = get_user_input(context, 10, 2, "Replace tile char: ")
-    if len(old_c) == 1:
-        new_c = get_user_input(context, 11, 2, "With tile char: ")
-        if len(new_c) == 1:
-            old_id = REGISTRY.get_by_char(old_c)
-            new_id = REGISTRY.get_by_char(new_c)
-            
-            if old_id != new_id:
-                session.map_obj.push_undo()
-                cnt = 0
-                for y in range(session.map_obj.height):
-                    for x in range(session.map_obj.width):
-                        if session.map_obj.get(x, y) == old_id:
-                            session.map_obj.set(x, y, new_id)
-                            cnt += 1
-                context.invalidate_cache()
-                session.tool_state.edits_since_save += 1
-                check_autosave(session, context)
-                show_message(context, f"Replaced {cnt} tiles", notify=True)
+    def on_old_char(old_c):
+        if old_c and len(old_c) == 1:
+            def on_new_char(new_c):
+                if new_c and len(new_c) == 1:
+                    old_id = REGISTRY.get_by_char(old_c)
+                    new_id = REGISTRY.get_by_char(new_c)
+                    if old_id != new_id:
+                        session.map_obj.push_undo()
+                        cnt = 0
+                        for y in range(session.map_obj.height):
+                            for x in range(session.map_obj.width):
+                                if session.map_obj.get(x, y) == old_id:
+                                    session.map_obj.set(x, y, new_id)
+                                    cnt += 1
+                        context.invalidate_cache()
+                        session.tool_state.edits_since_save += 1
+                        check_autosave(session, context)
+                        show_message(context, f"Replaced {cnt} tiles", notify=True)
+            context.manager.push(TextInputState(context.manager, context, "With tile char: ", on_new_char))
+    context.manager.push(TextInputState(context.manager, context, "Replace tile char: ", on_old_char))
 
 def handle_brush_size(session, context, action=None):
     if action == 'increase_brush':
@@ -290,20 +287,27 @@ def handle_tool_select(session, context, action=None):
     ts = session.tool_state
     ts.mode = action.split('_')[0]
     ts.start_point = None
-    # Pattern tool define stub if needed
 
 def handle_define_pattern(session, context, action=None):
-    # Stub
-    pass
+    def on_pattern(pattern):
+        if pattern:
+            session.tool_state.pattern = pattern
+            show_message(context, "Pattern defined", notify=True)
+    menu_define_pattern(context, on_pattern)
 
 def handle_define_brush(session, context, action=None):
-    session.tool_state.brush_shape = menu_define_brush(context)
+    def on_brush(brush):
+        if brush:
+            session.tool_state.brush_shape = brush
+            show_message(context, "Brush defined", notify=True)
+    menu_define_brush(context, on_brush)
 
 def handle_toggle_snap(session, context, action=None):
-    inp = get_user_input(context, 10, 2, "Enter snap size: ")
-    try:
-        session.tool_state.snap_size = int(inp or "1")
-    except: pass
+    def on_snap(inp):
+        try:
+            session.tool_state.snap_size = int(inp or "1")
+        except: pass
+    context.manager.push(TextInputState(context.manager, context, "Enter snap size: ", on_snap))
 
 def handle_toggle_palette(session, context, action=None):
     session.tool_state.show_palette = not session.tool_state.show_palette
@@ -312,27 +316,36 @@ def handle_toggle_autotile(session, context, action=None):
     session.tool_state.auto_tiling = not session.tool_state.auto_tiling
 
 def handle_resize_map(session, context, action=None):
-    res = menu_resize_map(context, session.map_obj, session.view_width, session.view_height)
-    if res is not None:
-        session.map_obj = res
-        session.map_obj.undo_stack = session.undo_stack
-        context.invalidate_cache()
+    def on_resized(new_map):
+        if new_map:
+            session.map_obj = new_map
+            session.map_obj.dirty = False
+            context.invalidate_cache()
+    menu_resize_map(context, session.map_obj, session.view_width, session.view_height, on_resized)
 
 def handle_set_seed(session, context, action=None):
-    import numpy as np
-    session.tool_state.seed = menu_set_seed(context, session.tool_state.seed)
-    random.seed(session.tool_state.seed)
-    np.random.seed(session.tool_state.seed)
+    def on_seed(inp):
+        if inp:
+            if inp.lower() == 'random':
+                session.tool_state.seed = None
+            else:
+                try: session.tool_state.seed = int(inp)
+                except: pass
+            import numpy as np
+            random.seed(session.tool_state.seed)
+            np.random.seed(session.tool_state.seed)
+    prompt = f"New seed (current: {session.tool_state.seed if session.tool_state.seed is not None else 'random'}): "
+    context.manager.push(TextInputState(context.manager, context, prompt, on_seed))
 
 def handle_statistics(session, context, action=None):
     menu_statistics(context, session.map_obj)
 
 def handle_show_help(session, context, action=None):
-    context.draw_help_overlay(session.bindings)
+    context.manager.push(HelpState(context.manager, context, session.bindings))
 
 def handle_edit_controls(session, context, action=None):
-    menu_controls(context, session.bindings)
-    session.key_map = build_key_map(session.bindings)
+    from menu.settings import ControlSettingsState
+    context.manager.push(ControlSettingsState(context.manager, context, session.bindings))
 
 def handle_file_ops(session, context, action=None):
     if action == 'save_map':
@@ -340,19 +353,21 @@ def handle_file_ops(session, context, action=None):
             session.map_obj.dirty = False
     elif action == 'load_map':
         def _on_loaded(m):
-            session.map_obj = m
-            session.map_obj.dirty = False
-            session.camera_x, session.camera_y = 0, 0
-            session.cursor_x, session.cursor_y = 0, 0
-            context.invalidate_cache()
+            if m:
+                session.map_obj = m
+                session.map_obj.dirty = False
+                session.camera_x, session.camera_y = 0, 0
+                session.cursor_x, session.cursor_y = 0, 0
+                context.invalidate_cache()
         context.manager.push(LoadMapState(context.manager, context, session.view_width, session.view_height, _on_loaded))
     elif action == 'new_map':
         def _on_new(m):
-             session.map_obj = m
-             session.map_obj.dirty = False
-             session.camera_x, session.camera_y = 0, 0
-             session.cursor_x, session.cursor_y = 0, 0
-             context.invalidate_cache()
+             if m:
+                 session.map_obj = m
+                 session.map_obj.dirty = False
+                 session.camera_x, session.camera_y = 0, 0
+                 session.cursor_x, session.cursor_y = 0, 0
+                 context.invalidate_cache()
         context.manager.push(NewMapState(context.manager, context, session.view_width, session.view_height, _on_new))
     elif action == 'export_image':
         context.manager.push(ExportMapState(context.manager, context, session.map_obj))
@@ -361,10 +376,11 @@ def handle_macro_toggle(session, context, action=None):
     ts = session.tool_state
     if ts.recording:
         ts.recording = False
-        name = get_user_input(context, 10, 2, "Enter name for macro: ")
-        if name: 
-            ts.macros[name] = list(ts.current_macro_actions)
-            show_message(context, f"Macro '{name}' saved", notify=True)
+        def on_name(name):
+            if name: 
+                ts.macros[name] = list(ts.current_macro_actions)
+                show_message(context, f"Macro '{name}' saved", notify=True)
+        context.manager.push(TextInputState(context.manager, context, "Enter name for macro: ", on_name))
     else:
         ts.recording = True
         ts.current_macro_actions = []
@@ -372,9 +388,10 @@ def handle_macro_toggle(session, context, action=None):
 
 def handle_macro_play(session, context, action=None):
     ts = session.tool_state
-    name = get_user_input(context, 10, 2, "Enter macro name to play: ")
-    if name in ts.macros:
-        session.action_queue.extendleft(reversed(ts.macros[name]))
+    def on_play(name):
+        if name in ts.macros:
+            session.action_queue.extendleft(reversed(ts.macros[name]))
+    context.manager.push(TextInputState(context.manager, context, "Enter macro name to play: ", on_play))
 
 def get_action_dispatcher():
     return {

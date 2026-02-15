@@ -49,6 +49,9 @@ def get_color_name(rgb):
 
 def get_key_name(key):
     # Handles both new string names and legacy integer codes
+    if key is None:
+        return "NONE"
+
     if isinstance(key, str):
         return key.upper()
 
@@ -100,94 +103,3 @@ def shift_map(map_data, dx, dy):
         for x in range(width):
             new_map[(y + dy) % height][(x + dx) % width] = map_data[y][x]
     return new_map
-
-def get_user_input(context, y, x, prompt):
-    # context is PygameContext
-    screen = context.screen
-    font = context.font
-    clock = context.clock
-    
-    px = x * context.tile_size
-    py = y * context.tile_size
-    
-    input_text = ""
-    
-    # Calculate box dimensions
-    box_w = 500
-    box_h = 100
-    bx = (context.width - box_w) // 2
-    by = (context.height - box_h) // 2
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    time.sleep(0.1)
-                    return input_text
-                elif event.key == pygame.K_ESCAPE:
-                    time.sleep(0.1)
-                    return ""
-                elif event.key == pygame.K_BACKSPACE:
-                    input_text = input_text[:-1]
-                else:
-                    if event.unicode and event.unicode.isprintable():
-                        input_text += event.unicode
-
-        # Draw overlay box
-        s = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-        s.fill((30, 30, 30, 240))
-        screen.blit(s, (bx, by))
-        pygame.draw.rect(screen, (0, 255, 255), (bx, by, box_w, box_h), 2)
-
-        # Render text
-        prompt_surf = font.render(prompt, True, (0, 255, 255))
-        screen.blit(prompt_surf, (bx + 20, by + 15))
-        
-        input_surf = font.render(input_text + "_", True, (255, 255, 255))
-        screen.blit(input_surf, (bx + 20, by + 50))
-
-        pygame.display.flip()
-        clock.tick(30)
-
-def get_user_confirmation(context, y, x, prompt, any_key=False):
-    # context is PygameContext
-    screen = context.screen
-    font = context.font
-    clock = context.clock
-
-    # Calculate box dimensions
-    box_w = max(400, font.size(prompt)[0] + 60)
-    box_h = 80
-    bx = (context.width - box_w) // 2
-    by = (context.height - box_h) // 2
-    
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if any_key:
-                    time.sleep(0.1)
-                    return True
-                if event.key == pygame.K_y:
-                    time.sleep(0.1)
-                    return True
-                elif event.key == pygame.K_n or event.key == pygame.K_ESCAPE:
-                    time.sleep(0.1)
-                    return False
-
-        # Draw overlay box
-        s = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-        s.fill((30, 30, 30, 240))
-        screen.blit(s, (bx, by))
-        pygame.draw.rect(screen, (255, 200, 0), (bx, by, box_w, box_h), 2)
-
-        text_surf = font.render(prompt, True, (255, 255, 255))
-        screen.blit(text_surf, (bx + (box_w - text_surf.get_width()) // 2, by + (box_h - text_surf.get_height()) // 2))
-
-        pygame.display.flip()
-        clock.tick(30)

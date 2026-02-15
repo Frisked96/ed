@@ -4,7 +4,7 @@ from state_engine import State
 from core import EditorSession, DEFAULT_VIEW_WIDTH, DEFAULT_VIEW_HEIGHT
 from map_io import load_config
 from editor_state import EditorState
-from menus import (
+from menu import (
     NewMapState, LoadMapState, TileRegistryState, 
     ControlSettingsState, MacroManagerState, AutoTilingManagerState
 )
@@ -65,6 +65,8 @@ class MainMenuState(State):
                 sys.exit()
 
     def start_editor(self, map_obj):
+        if map_obj is None:
+            return
         session = EditorSession(
             map_obj, 
             DEFAULT_VIEW_WIDTH, 

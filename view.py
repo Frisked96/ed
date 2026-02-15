@@ -1,6 +1,7 @@
 import pygame
 import sys
 from utils import get_key_name, get_distance
+from drawing import get_line_points, get_rect_points, get_circle_points
 from tiles import REGISTRY
 from core import COLOR_MAP
 
@@ -13,6 +14,7 @@ class Renderer:
         self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
         pygame.display.set_caption("Advanced Map Editor")
         
+        self.manager = None # Set by Main
         self.font_size = 20
         try:
             self.font = pygame.font.SysFont("Courier New", self.font_size, bold=True)
@@ -162,7 +164,42 @@ class Renderer:
                     self.screen.blit(glyph, (px, py))
         
         session.status_y = view_h * self.tile_size
+        self._draw_tool_preview(session)
         self.draw_notifications()
+
+    def _draw_tool_preview(self, session):
+        ts = session.tool_state
+        if not ts.start_point: return
+
+        sx, sy = ts.start_point
+        cx, cy = session.cursor_x, session.cursor_y
+        cam_x, cam_y = session.camera_x, session.camera_y
+        
+        points = []
+        if ts.mode == 'rect':
+            points = get_rect_points(sx, sy, cx, cy, filled=False)
+        elif ts.mode == 'line':
+            points = get_line_points(sx, sy, cx, cy)
+        elif ts.mode == 'circle':
+            radius = int(get_distance((sx, sy), (cx, cy)))
+            points = get_circle_points(sx, sy, radius, filled=False)
+        
+        color = (255, 255, 0) # Yellow for preview
+        
+        # Draw each point as a tile highlight
+        for px, py in points:
+            # Simple bounds check to avoid drawing off-screen too much
+            # (Pygame handles off-screen drawing, but no need to process huge lists if way off)
+            if px < cam_x - 1 or py < cam_y - 1 or \
+               px > cam_x + (self.width // self.tile_size) + 1 or \
+               py > cam_y + (self.height // self.tile_size) + 1:
+                continue
+
+            scr_x = (px - cam_x) * self.tile_size
+            scr_y = (py - cam_y) * self.tile_size
+            
+            # Draw a hollow square for the tile
+            pygame.draw.rect(self.screen, color, (scr_x, scr_y, self.tile_size, self.tile_size), 1)
 
     def draw_status(self, session):
         y_base = session.status_y + 10
@@ -223,84 +260,4 @@ class Renderer:
 
     def invalidate_cache(self):
         self.glyph_cache = {}
-
-    def draw_help_overlay(self, bindings):
-        help_sections = [
-            ("MOVEMENT", [
-                f"View: {get_key_name(bindings.get('move_view_up'))}/{get_key_name(bindings.get('move_view_down'))}/{get_key_name(bindings.get('move_view_left'))}/{get_key_name(bindings.get('move_view_right'))}",
-                f"Cursor: Arrow Keys"
-            ]),
-            ("DRAWING TOOLS", [
-                f"{get_key_name(bindings.get('place_tile'))}=Place tile | {get_key_name(bindings.get('cycle_tile'))}=Cycle tiles | {get_key_name(bindings.get('pick_tile'))}=Pick from menu",
-                f"{get_key_name(bindings.get('toggle_palette', 9))}=Quick Tile Palette",
-                f"{get_key_name(bindings.get('flood_fill'))}=Flood fill | {get_key_name(bindings.get('line_tool'))}=Line | {get_key_name(bindings.get('rect_tool'))}=Rectangle",
-                f"{get_key_name(bindings.get('circle_tool'))}=Circle | {get_key_name(bindings.get('pattern_tool'))}=Pattern mode",
-                f"Brush: {get_key_name(bindings.get('decrease_brush'))}/{get_key_name(bindings.get('increase_brush'))} (Size) | {get_key_name(bindings.get('define_brush'))}=Define shape",
-                f"Patterns: {get_key_name(bindings.get('define_pattern'))}=Define pattern"
-            ]),
-            ("SELECTION & CLIPBOARD", [
-                f"{get_key_name(bindings.get('select_start'))}=Start/End selection | {get_key_name(bindings.get('clear_selection'))}=Clear",
-                f"{get_key_name(bindings.get('copy_selection'))}=Copy | {get_key_name(bindings.get('paste_selection'))}=Paste",
-                f"{get_key_name(bindings.get('clear_area'))}=Clear selected area"
-            ]),
-            ("EDIT OPERATIONS", [
-                f"{get_key_name(bindings.get('undo'))}=Undo | {get_key_name(bindings.get('redo'))}=Redo",
-                f"{get_key_name(bindings.get('replace_all'))}=Replace all tiles | {get_key_name(bindings.get('statistics'))}=Show statistics"
-            ]),
-            ("MAP TRANSFORMATIONS", [
-                f"{get_key_name(bindings.get('map_rotate'))}=Rotate map 90° | {get_key_name(bindings.get('map_flip_h'))}=Flip H | {get_key_name(bindings.get('map_flip_v'))}=Flip V",
-                f"Shift Map: Arrows (while in shift mode/config keys) to shift content"
-            ]),
-            ("PROCEDURAL GENERATION", [
-                f"{get_key_name(bindings.get('random_gen'))}=Cellular Cave | {get_key_name(bindings.get('perlin_noise'))}=Perlin Noise",
-                f"{get_key_name(bindings.get('voronoi'))}=Voronoi regions | {get_key_name(bindings.get('set_seed'))}=Set random seed"
-            ]),
-            ("FILE OPERATIONS", [
-                f"{get_key_name(bindings.get('new_map'))}=New map | {get_key_name(bindings.get('load_map'))}=Load | {get_key_name(bindings.get('save_map'))}=Save",
-                f"{get_key_name(bindings.get('resize_map'))}=Resize map | {get_key_name(bindings.get('export_image'))}=Export PNG/CSV"
-            ]),
-            ("MACROS & AUTOMATION", [
-                f"{get_key_name(bindings.get('macro_record_toggle'))}=Toggle Macro Record | {get_key_name(bindings.get('macro_play'))}=Play Macro",
-                f"{get_key_name(bindings.get('toggle_autotile'))}=Toggle Auto-Tiling"
-            ]),
-            ("SYSTEM", [
-                f"{get_key_name(bindings.get('toggle_snap'))}=Set Snap | {get_key_name(bindings.get('set_measure'))}=Measure Dist",
-                f"{get_key_name(bindings.get('editor_menu'))}=Pause Menu (F1) | {get_key_name(bindings.get('quit'))}=Quit Editor",
-                f"{get_key_name(bindings.get('show_help'))}=Toggle Help (?)"
-            ])
-        ]
-        
-        all_lines = ["=== HELP (ESC to close) ==="]
-        all_lines.append("Macros: Record actions and play them back. Useful for repetitive tasks.")
-        all_lines.append("Auto-Tiling: Automatically picks tile variants based on neighbors.")
-        all_lines.append("")
-        for section, lines in help_sections:
-            all_lines.append(f"--- {section} ---")
-            all_lines.extend(lines)
-            all_lines.append("")
-
-        overlay_w, overlay_h = self.width - 100, self.height - 100
-        ox, oy = 50, 50
-        line_h = self.tile_size + 2
-        max_lines = (overlay_h - 20) // line_h
-        scroll = 0
-
-        while True:
-            pygame.draw.rect(self.screen, (30, 30, 30), (ox, oy, overlay_w, overlay_h))
-            pygame.draw.rect(self.screen, (200, 200, 200), (ox, oy, overlay_w, overlay_h), 2)
-
-            for i in range(max_lines):
-                idx = scroll + i
-                if idx < len(all_lines):
-                    surf = self.font.render(all_lines[idx], True, (255, 255, 255))
-                    self.screen.blit(surf, (ox + 10, oy + 10 + i * line_h))
-            
-            pygame.display.flip()
-            event = pygame.event.wait()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: break
-                elif event.key == pygame.K_UP: scroll = max(0, scroll - 1)
-                elif event.key == pygame.K_DOWN: scroll = min(len(all_lines) - max_lines, scroll + 1)
-            elif event.type == pygame.QUIT:
-                pygame.quit(); sys.exit()
 

@@ -12,6 +12,7 @@ class EditorState(State):
         self.renderer = renderer
         self.input_handler = InputHandler(session)
         self.renderer.update_dimensions()
+        self.palette_rects = None
 
     def enter(self, **kwargs):
         # We could show a "Toast" message here or something
@@ -24,23 +25,39 @@ class EditorState(State):
             self.input_handler.process_keyup(event.key)
         
         elif event.type == pygame.MOUSEMOTION:
-            # Convert screen coordinates to map coordinates
             mx, my = event.pos
-            tile_size = self.renderer.tile_size
             
-            # Calculate map coordinates based on camera position
-            map_x = (mx // tile_size) + self.session.camera_x
-            map_y = (my // tile_size) + self.session.camera_y
-            
-            # Update cursor position if within bounds
-            if 0 <= map_x < self.session.map_obj.width and 0 <= map_y < self.session.map_obj.height:
-                self.session.cursor_x = map_x
-                self.session.cursor_y = map_y
+            # Palette interaction (block cursor update)
+            if self.session.tool_state.show_palette and self.palette_rects and self.palette_rects[0].collidepoint(mx, my):
+                pass
+            else:
+                tile_size = self.renderer.tile_size
+                # Calculate map coordinates based on camera position
+                map_x = (mx // tile_size) + self.session.camera_x
+                map_y = (my // tile_size) + self.session.camera_y
+                
+                # Update cursor position if within bounds
+                if 0 <= map_x < self.session.map_obj.width and 0 <= map_y < self.session.map_obj.height:
+                    self.session.cursor_x = map_x
+                    self.session.cursor_y = map_y
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Dispatch mouse button press as an action
-            # event.button is 1 (left), 2 (middle), 3 (right), 4 (scroll up), 5 (scroll down)
-            self.input_handler.process_mouse(event.button, self.renderer)
+            # Check Palette Interaction
+            handled = False
+            if self.session.tool_state.show_palette and self.palette_rects:
+                main_rect, clickables = self.palette_rects
+                if main_rect.collidepoint(event.pos):
+                    # Check if clicked a specific tile
+                    for r, tid in clickables:
+                        if r.collidepoint(event.pos):
+                            self.session.selected_tile_id = tid
+                            break
+                    handled = True
+
+            if not handled:
+                # Dispatch mouse button press as an action
+                # event.button is 1 (left), 2 (middle), 3 (right), 4 (scroll up), 5 (scroll down)
+                self.input_handler.process_mouse(event.button, self.renderer)
 
         elif event.type == pygame.VIDEORESIZE:
             self.renderer.update_dimensions()
@@ -53,7 +70,9 @@ class EditorState(State):
         self.input_handler.check_held_keys()
         
         # Support continuous mouse painting (hold to paint)
-        self.input_handler.handle_mouse_hold(self.renderer)
+        mx, my = pygame.mouse.get_pos()
+        if not (self.session.tool_state.show_palette and self.palette_rects and self.palette_rects[0].collidepoint(mx, my)):
+             self.input_handler.handle_mouse_hold(self.renderer)
 
         if not self.session.running:
             self.manager.pop()
@@ -68,6 +87,5 @@ class EditorState(State):
         self.renderer.clear()
         self.renderer.draw_map(self.session)
         self.renderer.draw_status(self.session)
-        if self.session.tool_state.show_palette:
-             pass # Palette drawing needs update for ID based
+        self.palette_rects = self.renderer.draw_palette(self.session)
         # Note: We don't flip here, the StateManager does

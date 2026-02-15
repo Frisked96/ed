@@ -112,6 +112,19 @@ class ConfirmationState(State):
         self.context = context
         self.prompt = prompt
         self.callback = callback
+        
+        # Determine dimensions
+        font = self.context.font
+        prompt_w = font.size(self.prompt)[0]
+        self.box_w = max(400, prompt_w + 60)
+        self.box_h = 100
+        self.bx = (self.context.width - self.box_w) // 2
+        self.by = (self.context.height - self.box_h) // 2
+        
+        # Button rects (relative to box)
+        self.yes_rect = pygame.Rect(self.bx + self.box_w//2 - 110, self.by + 50, 80, 30)
+        self.no_rect = pygame.Rect(self.bx + self.box_w//2 + 30, self.by + 50, 80, 30)
+        self.hover_btn = None
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -121,20 +134,45 @@ class ConfirmationState(State):
             elif event.key in [pygame.K_n, pygame.K_ESCAPE, pygame.K_RETURN]:
                 self.manager.pop()
                 self.callback(False)
+        elif event.type == pygame.MOUSEMOTION:
+            mx, my = event.pos
+            if self.yes_rect.collidepoint(mx, my):
+                self.hover_btn = 'yes'
+            elif self.no_rect.collidepoint(mx, my):
+                self.hover_btn = 'no'
+            else:
+                self.hover_btn = None
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                mx, my = event.pos
+                if self.yes_rect.collidepoint(mx, my):
+                    self.manager.pop()
+                    self.callback(True)
+                elif self.no_rect.collidepoint(mx, my):
+                    self.manager.pop()
+                    self.callback(False)
 
     def draw(self, surface):
-        box_w = max(400, self.context.font.size(self.prompt)[0] + 60)
-        box_h = 80
-        bx = (self.context.width - box_w) // 2
-        by = (self.context.height - box_h) // 2
-
-        s = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        s = pygame.Surface((self.box_w, self.box_h), pygame.SRCALPHA)
         s.fill((30, 30, 30, 240))
-        surface.blit(s, (bx, by))
-        pygame.draw.rect(surface, (255, 200, 0), (bx, by, box_w, box_h), 2)
+        surface.blit(s, (self.bx, self.by))
+        pygame.draw.rect(surface, (255, 200, 0), (self.bx, self.by, self.box_w, self.box_h), 2)
 
         text_surf = self.context.font.render(self.prompt, True, (255, 255, 255))
-        surface.blit(text_surf, (bx + (box_w - text_surf.get_width()) // 2, by + (box_h - text_surf.get_height()) // 2))
+        surface.blit(text_surf, (self.bx + (self.box_w - text_surf.get_width()) // 2, self.by + 15))
+
+        # Draw Buttons
+        yes_color = (100, 255, 100) if self.hover_btn == 'yes' else (60, 180, 60)
+        no_color = (255, 100, 100) if self.hover_btn == 'no' else (180, 60, 60)
+        
+        pygame.draw.rect(surface, yes_color, self.yes_rect)
+        pygame.draw.rect(surface, no_color, self.no_rect)
+        
+        yes_txt = self.context.font.render("YES", True, (0,0,0))
+        no_txt = self.context.font.render("NO", True, (0,0,0))
+        
+        surface.blit(yes_txt, (self.yes_rect.centerx - yes_txt.get_width()//2, self.yes_rect.centery - yes_txt.get_height()//2))
+        surface.blit(no_txt, (self.no_rect.centerx - no_txt.get_width()//2, self.no_rect.centery - no_txt.get_height()//2))
 
 class MessageState(State):
     def __init__(self, manager, context, text, callback=None):
@@ -361,29 +399,75 @@ class ContextMenuState(State):
         self.selected_idx = -1
         
         font = context.font
-        max_w = 0
-        for label, _ in options:
-            w = font.size(label)[0]
-            if w > max_w: max_w = w
-        self.width = max_w + 40
-        self.height = len(options) * 30 + 10
+        
+        # Layout calculation
+        self.item_height = 30
+        self.max_rows = 12 # Max items per column before splitting
+        
+        count = len(options)
+        if count > self.max_rows:
+            self.cols = 2
+            self.rows = (count + 1) // 2
+        else:
+            self.cols = 1
+            self.rows = count
+
+        # Calculate width per column
+        self.col_widths = []
+        for c in range(self.cols):
+            # Items for this column
+            start = c * self.rows
+            end = min(start + self.rows, count)
+            col_items = options[start:end]
+            
+            w = 0
+            for label, _ in col_items:
+                tw = font.size(label)[0]
+                if tw > w: w = tw
+            self.col_widths.append(w + 40) # Padding
+            
+        self.width = sum(self.col_widths)
+        self.height = self.rows * self.item_height + 10
 
         x, y = screen_pos
-        if x + self.width > context.width: x = context.width - self.width
-        if y + self.height > context.height: y = context.height - self.height
+        # Adjust position if off-screen
+        if x + self.width > context.width: x = max(0, context.width - self.width)
+        if y + self.height > context.height: y = max(0, context.height - self.height)
         self.rect = pygame.Rect(x, y, self.width, self.height)
+
+    def get_index_at(self, pos):
+        mx, my = pos
+        if not self.rect.collidepoint(mx, my): return -1
+        
+        rel_x = mx - self.rect.x
+        rel_y = my - self.rect.y - 5
+        
+        if rel_y < 0 or rel_y >= self.rows * self.item_height: return -1
+        
+        row = rel_y // self.item_height
+        
+        current_x = 0
+        col = -1
+        for i, w in enumerate(self.col_widths):
+            if rel_x >= current_x and rel_x < current_x + w:
+                col = i
+                break
+            current_x += w
+            
+        if col == -1: return -1
+        
+        idx = col * self.rows + row
+        if idx < len(self.options):
+            return idx
+        return -1
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
-            mx, my = event.pos
-            if self.rect.collidepoint(mx, my):
-                self.selected_idx = (my - self.rect.y - 5) // 30
-            else:
-                self.selected_idx = -1
+            self.selected_idx = self.get_index_at(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            mx, my = event.pos
-            if self.rect.collidepoint(mx, my) and 0 <= self.selected_idx < len(self.options):
-                cb = self.options[self.selected_idx][1]
+            idx = self.get_index_at(event.pos)
+            if idx != -1:
+                cb = self.options[idx][1]
                 self.manager.pop()
                 if cb: cb()
             else:
@@ -400,14 +484,33 @@ class ContextMenuState(State):
 
         pygame.draw.rect(surface, (40, 40, 40), self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)
+        
+        # Draw Separator if 2 cols
+        current_x = self.rect.x
+        for i in range(self.cols - 1):
+             current_x += self.col_widths[i]
+             pygame.draw.line(surface, (100, 100, 100), (current_x, self.rect.y + 5), (current_x, self.rect.y + self.height - 5))
 
         font = self.context.font
-        for i, (label, _) in enumerate(self.options):
-            r = pygame.Rect(self.rect.x, self.rect.y + 5 + i * 30, self.width, 30)
-            color = (200, 200, 200)
-            if i == self.selected_idx:
-                pygame.draw.rect(surface, (60, 60, 80), r)
-                color = (255, 255, 255)
+        current_x = self.rect.x
+        
+        for c in range(self.cols):
+            start = c * self.rows
+            end = min(start + self.rows, len(self.options))
             
-            surf = font.render(label, True, color)
-            surface.blit(surf, (self.rect.x + 20, self.rect.y + 5 + i * 30 + (30 - surf.get_height()) // 2))
+            for r in range(end - start):
+                idx = start + r
+                label, _ = self.options[idx]
+                
+                # Item Rect
+                item_rect = pygame.Rect(current_x, self.rect.y + 5 + r * self.item_height, self.col_widths[c], self.item_height)
+                
+                color = (200, 200, 200)
+                if idx == self.selected_idx:
+                    pygame.draw.rect(surface, (60, 60, 80), item_rect)
+                    color = (255, 255, 255)
+                
+                surf = font.render(label, True, color)
+                surface.blit(surf, (item_rect.x + 20, item_rect.y + (self.item_height - surf.get_height()) // 2))
+            
+            current_x += self.col_widths[c]

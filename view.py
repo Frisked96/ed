@@ -105,9 +105,11 @@ class Renderer:
         end_vy = min(view_h, session.map_obj.height - cam_y)
 
         # Selection highlight
-        if session.selection_start and session.selection_end:
+        if session.selection_start:
             x0, y0 = session.selection_start
-            x1, y1 = session.selection_end
+            # Use cursor for end point if selection is in progress
+            x1, y1 = session.selection_end if session.selection_end else (session.cursor_x, session.cursor_y)
+            
             sx0, sx1 = (x0, x1) if x0 < x1 else (x1, x0)
             sy0, sy1 = (y0, y1) if y0 < y1 else (y1, y0)
             
@@ -122,7 +124,12 @@ class Renderer:
                 sel_py = (iy0 - cam_y) * self.tile_size
                 sel_pw = (ix1 - ix0 + 1) * self.tile_size
                 sel_ph = (iy1 - iy0 + 1) * self.tile_size
-                pygame.draw.rect(self.screen, (60, 60, 120), (sel_px, sel_py, sel_pw, sel_ph))
+                
+                # Draw filled rect and border
+                color = (60, 60, 120) if session.selection_end else (60, 60, 180, 100)
+                # Use surface for alpha if needed, or just solid
+                pygame.draw.rect(self.screen, color, (sel_px, sel_py, sel_pw, sel_ph))
+                pygame.draw.rect(self.screen, (100, 100, 255), (sel_px, sel_py, sel_pw, sel_ph), 2)
 
         # Brush bounds for ghosting
         br = ts.brush_size
@@ -176,7 +183,7 @@ class Renderer:
         cam_x, cam_y = session.camera_x, session.camera_y
         
         points = []
-        if ts.mode == 'rect':
+        if ts.mode == 'rect' or ts.mode == 'select':
             points = get_rect_points(sx, sy, cx, cy, filled=False)
         elif ts.mode == 'line':
             points = get_line_points(sx, sy, cx, cy)
@@ -185,6 +192,7 @@ class Renderer:
             points = get_circle_points(sx, sy, radius, filled=False)
         
         color = (255, 255, 0) # Yellow for preview
+        if ts.mode == 'select': color = (100, 100, 255) # Blue for selection
         
         # Draw each point as a tile highlight
         for px, py in points:
@@ -257,6 +265,61 @@ class Renderer:
             self.screen.blit(self.font.render(line, True, (200, 200, 255) if "ENABLED" in line or "ON" in line else (200, 200, 200)), (col2_x, y_base + i * 22))
         for i, line in enumerate(lines_c3):
             self.screen.blit(self.font.render(line, True, (200, 255, 200)), (col3_x, y_base + i * 22))
+
+    def draw_palette(self, session):
+        if not session.tool_state.show_palette: return None
+
+        all_tiles = list(REGISTRY.get_all())
+        if not all_tiles: return None
+        
+        # Layout
+        cols = 5
+        tile_spacing = 35
+        # Calculate height based on rows
+        rows = (len(all_tiles) + cols - 1) // cols
+        palette_w = cols * tile_spacing + 30
+        palette_h = rows * tile_spacing + 60
+        palette_h = min(palette_h, self.height - 100) # Cap height
+        
+        x_base = self.width - palette_w - 20
+        y_base = 60 # Below top bar/status
+        
+        # Background
+        s = pygame.Surface((palette_w, palette_h), pygame.SRCALPHA)
+        s.fill((30, 30, 30, 230))
+        self.screen.blit(s, (x_base, y_base))
+        pygame.draw.rect(self.screen, (200, 200, 200), (x_base, y_base, palette_w, palette_h), 2)
+        
+        # Title
+        title = self.font.render("PALETTE", True, (255, 255, 0))
+        self.screen.blit(title, (x_base + (palette_w - title.get_width())//2, y_base + 10))
+        
+        clickable_rects = []
+        
+        start_x = x_base + 15
+        start_y = y_base + 40
+        
+        for i, tile in enumerate(all_tiles):
+            c = i % cols
+            r = i // cols
+            
+            px = start_x + c * tile_spacing
+            py = start_y + r * tile_spacing
+            
+            if py + tile_spacing > y_base + palette_h: break
+            
+            rect = pygame.Rect(px, py, self.tile_size, self.tile_size)
+            clickable_rects.append((rect, tile.id))
+            
+            # Highlight selected
+            if tile.id == session.selected_tile_id:
+                pygame.draw.rect(self.screen, (255, 255, 0), (px-2, py-2, self.tile_size+4, self.tile_size+4), 2)
+            
+            glyph = self.get_glyph(tile.id)
+            if glyph:
+                self.screen.blit(glyph, (px, py))
+                
+        return pygame.Rect(x_base, y_base, palette_w, palette_h), clickable_rects
 
     def invalidate_cache(self):
         self.glyph_cache = {}

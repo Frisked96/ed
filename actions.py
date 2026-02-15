@@ -122,11 +122,18 @@ def handle_place_tile(session, context, action=None):
             place_tile_at(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
             ts.edits_since_save += 1
             check_autosave(session, context)
-    elif ts.mode in ('line', 'rect', 'circle', 'pattern'):
+    elif ts.mode in ('line', 'rect', 'circle', 'pattern', 'select'):
         if ts.start_point is None:
             ts.start_point = (session.cursor_x, session.cursor_y)
         else:
-            if ts.mode == 'line':
+            if ts.mode == 'select':
+                x0, y0 = ts.start_point
+                x1, y1 = session.cursor_x, session.cursor_y
+                session.selection_start = (min(x0, x1), min(y0, y1))
+                session.selection_end = (max(x0, x1), max(y0, y1))
+                ts.start_point = None
+                show_message(context, "Area Selected", notify=True)
+            elif ts.mode == 'line':
                 session.map_obj.push_undo()
                 draw_line(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
                 ts.start_point = None
@@ -139,7 +146,13 @@ def handle_place_tile(session, context, action=None):
                     ts.start_point = None
                     ts.edits_since_save += 1
                     check_autosave(session, context)
-                context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_rect_confirm))
+                
+                if ts.shape_fill_mode == 'fill':
+                    on_rect_confirm(True)
+                elif ts.shape_fill_mode == 'outline':
+                    on_rect_confirm(False)
+                else:
+                    context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_rect_confirm))
             elif ts.mode == 'circle':
                 def on_circle_confirm(filled):
                     session.map_obj.push_undo()
@@ -148,7 +161,13 @@ def handle_place_tile(session, context, action=None):
                     ts.start_point = None
                     ts.edits_since_save += 1
                     check_autosave(session, context)
-                context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_circle_confirm))
+
+                if ts.shape_fill_mode == 'fill':
+                    on_circle_confirm(True)
+                elif ts.shape_fill_mode == 'outline':
+                    on_circle_confirm(False)
+                else:
+                    context.manager.push(ConfirmationState(context.manager, context, "Filled? (y/n): ", on_circle_confirm))
 
 def handle_flood_fill(session, context, action=None):
     old_char = session.map_obj.get(session.cursor_x, session.cursor_y)
@@ -199,6 +218,58 @@ def handle_selection(session, context, action=None):
         session.tool_state.edits_since_save += 1
         check_autosave(session, context)
         show_message(context, "Area cleared", notify=True)
+
+def handle_rotate_selection_action(session, context, action=None):
+    if not (session.selection_start and session.selection_end):
+        if session.clipboard:
+             session.clipboard = rotate_selection_90(session.clipboard)
+             show_message(context, "Clipboard Rotated (Paste to apply)", notify=True)
+             return
+        show_message(context, "No selection to rotate")
+        return
+
+    # In-Place Rotation
+    x0, y0 = session.selection_start
+    x1, y1 = session.selection_end
+    sx0, sx1 = min(x0, x1), max(x0, x1)
+    sy0, sy1 = min(y0, y1), max(y0, y1)
+    
+    w = sx1 - sx0 + 1
+    h = sy1 - sy0 + 1
+    
+    # Copy data
+    data = [[session.map_obj.get(x, y) for x in range(sx0, sx1+1)] for y in range(sy0, sy1+1)]
+    
+    # Rotate
+    rotated = rotate_selection_90(data)
+    new_h = len(rotated)
+    new_w = len(rotated[0])
+    
+    session.map_obj.push_undo()
+    
+    # Clear old area
+    for y in range(sy0, sy1+1):
+        for x in range(sx0, sx1+1):
+            session.map_obj.set(x, y, 0) # Clear to void
+            
+    # Calculate center
+    cx = sx0 + w / 2
+    cy = sy0 + h / 2
+    nx = int(cx - new_w / 2)
+    ny = int(cy - new_h / 2)
+    
+    # Paste rotated
+    for dy, row in enumerate(rotated):
+        for dx, val in enumerate(row):
+            session.map_obj.set(nx + dx, ny + dy, val)
+            
+    # Update selection
+    session.selection_start = (nx, ny)
+    session.selection_end = (nx + new_w - 1, ny + new_h - 1)
+    
+    session.tool_state.edits_since_save += 1
+    check_autosave(session, context)
+    show_message(context, "Selection Rotated", notify=True)
 
 def handle_map_transform(session, context, action=None):
     session.map_obj.push_undo()
@@ -410,27 +481,38 @@ def handle_open_context_menu(session, context, action=None):
             session.selected_tile_id = tid
             show_message(context, f"Picked tile ID {tid}", notify=True)
 
+    def set_tool(mode):
+        session.tool_state.mode = mode
+        session.tool_state.start_point = None
+        show_message(context, f"Switched to {mode.capitalize()} Tool", notify=True)
+
+    def toggle_fill_mode():
+        modes = ['ask', 'fill', 'outline']
+        curr = session.tool_state.shape_fill_mode
+        idx = modes.index(curr) if curr in modes else 0
+        next_mode = modes[(idx + 1) % len(modes)]
+        session.tool_state.shape_fill_mode = next_mode
+        show_message(context, f"Shape Fill: {next_mode.upper()}", notify=True)
+
     options = [
+        ("Point Tool", lambda: set_tool('place')),
+        ("Line Tool", lambda: set_tool('line')),
+        ("Rect Tool", lambda: set_tool('rect')),
+        ("Circle Tool", lambda: set_tool('circle')),
+        ("Select Tool", lambda: set_tool('select')),
         ("Flood Fill", on_flood_fill),
         ("Pick Tile", on_pick_tile_at_cursor),
+        ("Toggle Fill Mode", toggle_fill_mode),
+        ("Toggle Palette", lambda: handle_toggle_palette(session, context)),
+        ("Undo", lambda: handle_undo_redo(session, context, 'undo')),
+        ("Redo", lambda: handle_undo_redo(session, context, 'redo')),
+        ("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')),
+        ("Paste Selection", lambda: handle_selection(session, context, 'paste_selection')),
+        ("Rotate Selection", lambda: handle_rotate_selection_action(session, context)),
+        ("Clear Selection", lambda: handle_selection(session, context, 'clear_selection')),
+        ("Clear Area", lambda: handle_selection(session, context, 'clear_area')),
+        ("Save Map", lambda: handle_file_ops(session, context, 'save_map')),
     ]
-
-    # Add selection options if relevant
-    if session.selection_start and session.selection_end:
-        options.append(("Copy Selection", lambda: handle_selection(session, context, 'copy_selection')))
-        options.append(("Clear Area", lambda: handle_selection(session, context, 'clear_area')))
-        options.append(("Rotate Selection", lambda: handle_map_transform(session, context, 'rotate_selection'))) # Wait, rotate_selection is map transform?
-        # Actually rotate_selection is not in map_transform, it was in help but verify action key
-        # In get_action_dispatcher: 'rotate_selection' is not there? 
-        # 'map_rotate' is there. 'rotate_selection' is in help but dispatch uses... wait.
-        # Check get_action_dispatcher keys: 'copy_selection', 'paste_selection', 'clear_area'.
-        # No 'rotate_selection' key in dispatcher?
-        # help says: {get_key_name(b.get('rotate_selection'))}=Rotate Sel
-        # But dispatch has 'map_rotate' which rotates the *map*.
-        # Let's check imports. utils has rotate_selection_90.
-        # handle_map_transform calls rotate_selection_90(session.map_obj.data). That rotates the *whole map* (or creates new map).
-        # It seems selection rotation isn't fully implemented or is same as map rotation?
-        pass
 
     context.manager.push(ContextMenuState(context.manager, context, options, mouse_pos))
 
@@ -448,6 +530,7 @@ def get_action_dispatcher():
         'undo': handle_undo_redo, 'redo': handle_undo_redo,
         'select_start': handle_selection, 'clear_selection': handle_selection,
         'copy_selection': handle_selection, 'paste_selection': handle_selection,
+        'rotate_selection': handle_rotate_selection_action,
         'clear_area': handle_selection,
         'map_rotate': handle_map_transform, 'map_flip_h': handle_map_transform, 'map_flip_v': handle_map_transform,
         'map_shift_up': handle_map_transform, 'map_shift_down': handle_map_transform,

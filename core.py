@@ -100,6 +100,7 @@ class ToolState:
     def __init__(self, macros=None, tiling_rules=None):
         self.mode = 'place'
         self.start_point = None
+        self.shape_fill_mode = 'ask' # 'ask', 'fill', 'outline'
         self.brush_size = 1
         self.brush_shape = None
         self.dirty = False

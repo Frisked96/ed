@@ -6,6 +6,25 @@ from drawing import get_line_points, get_rect_points, get_circle_points
 from tiles import REGISTRY
 from core import COLOR_MAP
 
+# procedural box drawing
+BOX_DRAWING_CHARS = {
+    # Light (Single) - (Top, Right, Bottom, Left)
+    '─': (0, 1, 0, 1), '│': (1, 0, 1, 0),
+    '┌': (0, 1, 1, 0), '┐': (0, 0, 1, 1),
+    '└': (1, 1, 0, 0), '┘': (1, 0, 0, 1),
+    '├': (1, 1, 1, 0), '┤': (1, 0, 1, 1),
+    '┬': (0, 1, 1, 1), '┴': (1, 1, 0, 1),
+    '┼': (1, 1, 1, 1),
+    
+    # Double - (Top, Right, Bottom, Left)
+    '═': (0, 2, 0, 2), '║': (2, 0, 2, 0),
+    '╔': (0, 2, 2, 0), '╗': (0, 0, 2, 2),
+    '╚': (2, 2, 0, 0), '╝': (2, 0, 0, 2),
+    '╠': (2, 2, 2, 0), '╣': (2, 0, 2, 2),
+    '╦': (0, 2, 2, 2), '╩': (2, 2, 0, 2),
+    '╬': (2, 2, 2, 2),
+}
+
 class Renderer:
     def __init__(self, screen, tile_size=20):
         self.tile_size = tile_size
@@ -32,6 +51,76 @@ class Renderer:
         
         # Subscribe to tile changes
         REGISTRY.subscribe(self.invalidate_cache)
+
+    def _render_box_char(self, char, color, bg_color):
+        s = pygame.Surface((self.tile_size, self.tile_size), pygame.SRCALPHA)
+        if bg_color:
+            s.fill(bg_color)
+        
+        ts = self.tile_size
+        cx, cy = ts // 2, ts // 2
+        
+        # Draw full block
+        if char == '█':
+            s.fill(color)
+            return s
+            
+        # Draw box lines
+        dirs = BOX_DRAWING_CHARS.get(char)
+        if not dirs:
+            return None
+            
+        # Widths
+        thickness = max(1, int(ts * 0.15)) # ~3px for 20
+        # For double lines, we draw two thinner lines or one thick one?
+        # Let's try drawing two thin lines with gap for double, single for single.
+        
+        # Single line width
+        sw = max(1, int(ts * 0.1))
+        # Double line total width
+        dw = max(3, int(ts * 0.3))
+        gap = max(1, int(ts * 0.1))
+        
+        top, right, bottom, left = dirs
+        
+        # Helper for rects
+        def draw_rect(r):
+            pygame.draw.rect(s, color, r)
+            
+        # Center block (intersection)
+        # We fill center based on max connectivity to avoid gaps
+        # If any is double, we might need a complex center.
+        # Simple approach: Draw arms into center.
+        
+        # Top
+        if top == 1:
+            draw_rect((cx - sw//2, 0, sw, cy + sw//2))
+        elif top == 2:
+            draw_rect((cx - dw//2, 0, (dw-gap)//2, cy + dw//2))
+            draw_rect((cx + gap//2, 0, (dw-gap)//2, cy + dw//2))
+
+        # Bottom
+        if bottom == 1:
+            draw_rect((cx - sw//2, cy - sw//2, sw, ts - cy + sw//2))
+        elif bottom == 2:
+            draw_rect((cx - dw//2, cy - dw//2, (dw-gap)//2, ts - cy + dw//2))
+            draw_rect((cx + gap//2, cy - dw//2, (dw-gap)//2, ts - cy + dw//2))
+
+        # Left
+        if left == 1:
+            draw_rect((0, cy - sw//2, cx + sw//2, sw))
+        elif left == 2:
+            draw_rect((0, cy - dw//2, cx + dw//2, (dw-gap)//2))
+            draw_rect((0, cy + gap//2, cx + dw//2, (dw-gap)//2))
+
+        # Right
+        if right == 1:
+            draw_rect((cx - sw//2, cy - sw//2, ts - cx + sw//2, sw))
+        elif right == 2:
+            draw_rect((cx - dw//2, cy - dw//2, ts - cx + dw//2, (dw-gap)//2))
+            draw_rect((cx - dw//2, cy + gap//2, ts - cx + dw//2, (dw-gap)//2))
+            
+        return s
 
     def draw_notifications(self, notifications):
         """Purely visual: takes a list of active notification objects and draws them."""
@@ -74,6 +163,13 @@ class Renderer:
             color = COLOR_MAP.get(color_val.lower(), (255, 255, 255))
         else:
             color = color_val
+
+        # Try procedural rendering first for box/block chars
+        if char in BOX_DRAWING_CHARS or char == '█':
+            box_surf = self._render_box_char(char, color, bg_color)
+            if box_surf:
+                self.glyph_cache[key] = box_surf
+                return box_surf
 
         surf = self.font.render(char, True, color, bg_color)
         # If the font isn't bold enough, we could potentially blit it twice with an offset,

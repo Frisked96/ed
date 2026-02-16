@@ -40,8 +40,30 @@ class AppFlow(StateMachine):
         self.manager.push(NewMapState(self.manager, self.renderer, vw, vh, callback))
 
     def push_load_map_wizard(self, vw, vh, callback):
-        from menu import LoadMapState
-        self.manager.push(LoadMapState(self.manager, self.renderer, vw, vh, callback))
+        from menu.base import TextInputState
+        import os
+        from core import Map
+        from tiles import REGISTRY
+
+        def on_filename(filename):
+            if filename:
+                if os.path.exists(filename):
+                    try:
+                        with open(filename, "r") as f:
+                            lines = [line.rstrip("\n") for line in f]
+                        if lines:
+                            w = max(len(l) for l in lines); h = len(lines)
+                            m = Map(w, h)
+                            for y, line in enumerate(lines):
+                                for x, ch in enumerate(line):
+                                    m.set(x, y, REGISTRY.get_by_char(ch))
+                            callback(m)
+                            return
+                    except Exception as e:
+                        print(f"Error loading map: {e}")
+            callback(None)
+
+        self.manager.push(TextInputState(self.manager, self.renderer, "Load map from: ", on_filename))
 
     def push_tile_registry(self):
         from menu import TileRegistryState
@@ -78,7 +100,7 @@ class AppFlow(StateMachine):
     def push_pause_menu(self, callback):
         from menu import menu_editor_pause
         # menu_editor_pause internally pushes EditorPauseState
-        menu_editor_pause(self.renderer, callback)
+        menu_editor_pause(self.manager, self.renderer, callback)
 
     def push_tile_picker(self, callback):
         from menu.pickers import TilePickerState

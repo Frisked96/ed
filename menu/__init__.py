@@ -1,5 +1,5 @@
 from menu.base import (
-    build_key_map, get_map_statistics, _render_menu_generic, 
+    build_key_map, get_map_statistics, 
     FormState, TextInputState, ConfirmationState, MessageState, HelpState
 )
 from menu.pickers import ColorPickerState, TilePickerState

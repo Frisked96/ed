@@ -29,7 +29,7 @@ def handle_editor_menu(session, manager, action=None):
         elif choice == "Auto-Tiling Manager":
             flow.push_autotile_manager(session.tool_state)
         elif choice == "Autosave Settings":
-            menu_autosave_settings(manager, session.tool_state)
+            menu_autosave_settings(manager, manager.flow.renderer, session.tool_state)
         elif choice == "Exit to Main Menu":
             if session.map_obj.dirty:
                 def on_confirm(confirmed):
@@ -43,7 +43,7 @@ def handle_editor_menu(session, manager, action=None):
     flow.push_pause_menu(on_choice)
 
 def handle_statistics(session, manager, action=None):
-    menu_statistics(manager, session.map_obj)
+    menu_statistics(manager, manager.flow.renderer, session.map_obj)
 
 def handle_show_help(session, manager, action=None):
     manager.flow.push_help(session.bindings)

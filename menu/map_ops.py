@@ -50,21 +50,29 @@ class LoadMapState(State):
 
     def enter(self, **kwargs):
         def on_filename(filename):
-            if filename and os.path.exists(filename):
-                from core import Map
-                try:
-                    with open(filename, "r") as f:
-                        lines = [line.rstrip("\n") for line in f]
-                    if lines:
-                        w = max(len(l) for l in lines); h = len(lines)
-                        m = Map(w, h)
-                        for y, line in enumerate(lines):
-                            for x, ch in enumerate(line):
-                                m.set(x, y, REGISTRY.get_by_char(ch))
-                        self.manager.pop() # Pop LoadMapState
-                        self.callback(m)
-                        return
-                except: pass
+            print(f"DEBUG: LoadMapState received filename: {filename}")
+            if filename:
+                if os.path.exists(filename):
+                    from core import Map
+                    try:
+                        with open(filename, "r") as f:
+                            lines = [line.rstrip("\n") for line in f]
+                        if lines:
+                            w = max(len(l) for l in lines); h = len(lines)
+                            m = Map(w, h)
+                            for y, line in enumerate(lines):
+                                for x, ch in enumerate(line):
+                                    m.set(x, y, REGISTRY.get_by_char(ch))
+                            print(f"DEBUG: Successfully loaded map {w}x{h}")
+                            self.manager.pop() # Pop LoadMapState
+                            self.callback(m)
+                            return
+                    except Exception as e:
+                        print(f"DEBUG: Error reading map file: {e}")
+                else:
+                    print(f"DEBUG: File does not exist: {filename}")
+            
+            print("DEBUG: LoadMapState failing, popping and calling callback(None)")
             self.manager.pop() # Pop LoadMapState even on failure
             self.callback(None)
 

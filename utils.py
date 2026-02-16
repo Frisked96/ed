@@ -3,6 +3,7 @@ import pygame
 import sys
 import json
 import os
+import math
 from core import COLOR_MAP
 
 def get_all_colors():
@@ -106,3 +107,22 @@ def shift_map(map_data, dx, dy):
         for x in range(width):
             new_map[(y + dy) % height][(x + dx) % width] = map_data[y][x]
     return new_map
+
+def test_unicode_support(font):
+    """Checks if the given font can render box drawing and shade characters properly."""
+    if not font: return False
+    test_chars = ["│", "─", "┌", "░"]
+    try:
+        # Most fonts that don't support these will render them as the same width
+        # as a missing glyph rectangle or space.
+        # We can compare with a definitely missing character.
+        # But a simpler test is just checking if they have non-zero width and differ from a space.
+        space_width = font.size(" ")[0]
+        for char in test_chars:
+            w, h = font.size(char)
+            if w <= 1: return False
+            # If it's the exact same width as a space, it MIGHT be a placeholder (not always, but suspicious for boxes)
+            # Better check: render it and see if it's all empty? No, that's expensive.
+        return True
+    except:
+        return False

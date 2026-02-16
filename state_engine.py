@@ -31,7 +31,47 @@ class StateManager:
         self.screen = screen
         self.running = True
         self.states = []
-        self.ui_manager = pygame_gui.UIManager(screen.get_size())
+        self.ui_manager = pygame_gui.UIManager(screen.get_size(), "theme.json")
+        
+        # Try to load a font that supports Unicode for the UI
+        from utils import test_unicode_support
+        font_names = ["dejavusansmono", "freemono", "notomono", "liberationmono", "ubuntumono", "notosans", "notosanssymbols", "unifont", "arialunicodems", "seguisym", "couriernew", "monospace"]
+        found_path = None
+        found_bold_path = None
+        
+        for name in font_names:
+            try:
+                # Test with SysFont first to see if it renders unicode
+                test_font = pygame.font.SysFont(name, 18)
+                if test_unicode_support(test_font):
+                    found_path = pygame.font.match_font(name)
+                    found_bold_path = pygame.font.match_font(name, bold=True)
+                    if found_path:
+                        break
+            except:
+                continue
+        
+        if found_path:
+            # Register it as 'app_font' AND 'default' to be sure
+            actual_bold = found_bold_path if found_bold_path else found_path
+            self.ui_manager.add_font_paths("app_font", found_path, actual_bold)
+            self.ui_manager.add_font_paths("default", found_path, actual_bold)
+            
+            # Preload various sizes
+            sizes = [14, 16, 18, 20, 24, 32, 36, 48, 64]
+            preload_list = []
+            for size in sizes:
+                preload_list.append({"name": "app_font", "point_size": size, "style": "regular"})
+                preload_list.append({"name": "app_font", "point_size": size, "style": "bold"})
+            
+            self.ui_manager.preload_fonts(preload_list)
+            # Re-load theme to make sure it picks up the new font definitions
+            self.ui_manager.get_theme().load_theme("theme.json")
+        else:
+            print("DEBUG: No Unicode font found! Falling back to sans-serif.")
+            # Fallback to whatever pygame can find that might be better than the default
+            self.ui_manager.preload_fonts([{"name": "sans-serif", "point_size": 14, "style": "regular"}])
+
         self.clock = pygame.time.Clock()
         self.notifications = []
 

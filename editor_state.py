@@ -70,29 +70,28 @@ class EditorState(State):
         # Status Panel at bottom
         self.status_panel = UIPanel(
             relative_rect=pygame.Rect(0, h - 100, w, 100),
-            manager=self.ui_manager,
-            layer_thickness=1
+            manager=self.ui_manager
         )
 
         # Labels
         # Row 1: Mode, Cursor, Camera
-        self.labels['mode'] = UILabel(pygame.Rect(10, 10, 200, 20), "MODE: --", self.ui_manager, container=self.status_panel)
-        self.labels['cursor'] = UILabel(pygame.Rect(220, 10, 200, 20), "CURSOR: 0,0", self.ui_manager, container=self.status_panel)
-        self.labels['camera'] = UILabel(pygame.Rect(440, 10, 200, 20), "CAMERA: 0,0", self.ui_manager, container=self.status_panel)
+        self.labels['mode'] = UILabel(pygame.Rect(10, 10, 200, 20), "MODE: --", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['cursor'] = UILabel(pygame.Rect(220, 10, 200, 20), "CURSOR: 0,0", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['camera'] = UILabel(pygame.Rect(440, 10, 200, 20), "CAMERA: 0,0", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
 
         # Row 2: Brush, Autotile, Snap
-        self.labels['brush'] = UILabel(pygame.Rect(10, 35, 200, 20), "BRUSH: 1x1", self.ui_manager, container=self.status_panel)
-        self.labels['autotile'] = UILabel(pygame.Rect(220, 35, 200, 20), "AUTOTILE: OFF", self.ui_manager, container=self.status_panel)
-        self.labels['snap'] = UILabel(pygame.Rect(440, 35, 200, 20), "SNAP: OFF", self.ui_manager, container=self.status_panel)
+        self.labels['brush'] = UILabel(pygame.Rect(10, 35, 200, 20), "BRUSH: 1x1", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['autotile'] = UILabel(pygame.Rect(220, 35, 200, 20), "AUTOTILE: OFF", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['snap'] = UILabel(pygame.Rect(440, 35, 200, 20), "SNAP: OFF", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
 
         # Row 3: Stats, Help
-        self.labels['map'] = UILabel(pygame.Rect(10, 60, 200, 20), f"MAP: {self.session.map_obj.width}x{self.session.map_obj.height}", self.ui_manager, container=self.status_panel)
-        self.labels['history'] = UILabel(pygame.Rect(220, 60, 200, 20), "UNDO: 0 / REDO: 0", self.ui_manager, container=self.status_panel)
-        self.labels['help'] = UILabel(pygame.Rect(440, 60, 300, 20), "[F1] Menu | [?] Help", self.ui_manager, container=self.status_panel)
+        self.labels['map'] = UILabel(pygame.Rect(10, 60, 200, 20), f"MAP: {self.session.map_obj.width}x{self.session.map_obj.height}", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['history'] = UILabel(pygame.Rect(220, 60, 200, 20), "UNDO: 0 / REDO: 0", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['help'] = UILabel(pygame.Rect(440, 60, 300, 20), "[F1] Menu | [?] Help", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
 
         # Selected Tile Preview (Right side of status)
-        self.labels['tile_preview'] = UILabel(pygame.Rect(w - 220, 10, 200, 40), "TILE: [?]", self.ui_manager, container=self.status_panel)
-        self.labels['tile_name'] = UILabel(pygame.Rect(w - 220, 50, 200, 20), "Unknown", self.ui_manager, container=self.status_panel)
+        self.labels['tile_preview'] = UILabel(pygame.Rect(w - 220, 5, 200, 55), "TILE: [?]", self.ui_manager, container=self.status_panel, object_id="#unicode_label_large")
+        self.labels['tile_name'] = UILabel(pygame.Rect(w - 220, 60, 200, 20), "Unknown", self.ui_manager, container=self.status_panel)
 
         self._build_palette()
 
@@ -106,10 +105,10 @@ class EditorState(State):
             return
 
         w, h = self.renderer.screen.get_size()
-        win_w, win_h = 250, h - 120
+        win_w, win_h = 320, h - 150
 
         self.palette_window = UIWindow(
-            rect=pygame.Rect(w - win_w - 10, 10, win_w, win_h),
+            rect=pygame.Rect(w - win_w - 20, 20, win_w, win_h),
             manager=self.ui_manager,
             window_display_title="PALETTE",
             resizable=True
@@ -123,9 +122,10 @@ class EditorState(State):
         )
 
         tiles = REGISTRY.get_all()
-        tile_size = 40
+        # Make the buttons much larger to reduce relative padding
+        tile_size = 80
         padding = 5
-        cols = max(1, (win_w - 50) // (tile_size + padding))
+        cols = max(1, (win_w - 60) // (tile_size + padding))
 
         scroll_h = 0
         for i, tile in enumerate(tiles):
@@ -134,13 +134,27 @@ class EditorState(State):
             px = padding + c * (tile_size + padding)
             py = padding + r * (tile_size + padding)
 
+            # Use color if available
+            color_hex = "#FFFFFF"
+            if isinstance(tile.color, str):
+                from core import COLOR_MAP
+                rgb = COLOR_MAP.get(tile.color.lower(), (255, 255, 255))
+                color_hex = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+            elif isinstance(tile.color, (list, tuple)):
+                color_hex = f"#{tile.color[0]:02x}{tile.color[1]:02x}{tile.color[2]:02x}"
+
             btn = UIButton(
                 relative_rect=pygame.Rect(px, py, tile_size, tile_size),
                 text=tile.char,
                 manager=self.ui_manager,
-                container=container
+                container=container,
+                tool_tip_text=f"{tile.name} ({tile.id})",
+                object_id="#unicode_button"
             )
-            btn.tool_tip_text = f"{tile.name} ({tile.id})"
+            # Apply color via HTML if possible (pygame_gui supports this in some versions/elements)
+            # If standard text doesn't show color, we might need a custom theme or images.
+            # For now, let's at least ensure the ID is tracked correctly.
+            
             self.palette_buttons[btn] = tile.id
             scroll_h = max(scroll_h, py + tile_size + padding)
 
@@ -156,6 +170,7 @@ class EditorState(State):
             if event.ui_element in self.palette_buttons:
                 tid = self.palette_buttons[event.ui_element]
                 self.session.selected_tile_id = tid
+                self._update_ui_labels()
                 return
 
         if event.type == pygame_gui.UI_WINDOW_CLOSE:
@@ -259,6 +274,9 @@ class EditorState(State):
         self._update_ui_labels()
 
     def _update_ui_labels(self):
+        if not self.labels or 'mode' not in self.labels:
+            return
+
         ts = self.session.tool_state
 
         mode_str = ts.mode.upper()
@@ -275,6 +293,7 @@ class EditorState(State):
 
         t = REGISTRY.get(self.session.selected_tile_id)
         if t:
+            # Use color if available
             self.labels['tile_preview'].set_text(f"TILE: [{t.char}]")
             self.labels['tile_name'].set_text(t.name)
             

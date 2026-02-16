@@ -36,7 +36,11 @@ class ControlSettingsState(State):
 
         y = 10
         for action in self.actions:
-            key_name = self.bindings[action]
+            key_val = self.bindings[action]
+            if isinstance(key_val, list):
+                key_name = ", ".join(key_val)
+            else:
+                key_name = str(key_val)
 
             UILabel(
                 relative_rect=pygame.Rect(10, y, 250, 30),
@@ -105,10 +109,15 @@ class ControlSettingsState(State):
             self._end_capture(key_name)
 
     def _end_capture(self, new_text):
+        if isinstance(new_text, list):
+            display_text = ", ".join(new_text)
+        else:
+            display_text = str(new_text)
+            
         # Find button
         for btn, action in self.buttons.items():
             if action == self.capturing:
-                btn.set_text(new_text)
+                btn.set_text(display_text)
                 btn.enable()
                 break
         self.capturing = None
@@ -209,5 +218,5 @@ class AutosaveSettingsState(MenuState):
             if event.key == pygame.K_ESCAPE:
                 self.manager.pop()
 
-def menu_autosave_settings(context, tool_state):
-    context.manager.push(AutosaveSettingsState(context.manager, context, tool_state))
+def menu_autosave_settings(manager, renderer, tool_state):
+    manager.push(AutosaveSettingsState(manager, renderer, tool_state))

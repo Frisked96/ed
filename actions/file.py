@@ -12,7 +12,7 @@ def handle_quit(session, manager, action=None):
 
 def handle_file_ops(session, manager, action=None):
     if action == 'save_map':
-        if menu_save_map(manager, session.map_obj):
+        if menu_save_map(manager, manager.flow.renderer, session.map_obj):
             session.map_obj.dirty = False
     elif action == 'load_map':
         def _on_loaded(m):

@@ -1,0 +1,44 @@
+{
+    "defaults": {
+        "font": {
+            "name": "app_font",
+            "size": 18
+        }
+    },
+    "button": {
+        "colours": {
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFFFF",
+            "selected_text": "#FFFFFF"
+        }
+    },
+    "#unicode_label": {
+        "font": {
+            "name": "app_font",
+            "size": 18
+        }
+    },
+    "#unicode_label_large": {
+        "font": {
+            "name": "app_font",
+            "size": 42,
+            "style": "bold"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF"
+        }
+    },
+    "#unicode_button": {
+        "font": {
+            "name": "app_font",
+            "size": 48,
+            "style": "bold"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF"
+        },
+        "misc": {
+            "padding": "2,2"
+        }
+    }
+}

@@ -61,11 +61,6 @@ class TileRegistryState(State):
     def refresh_data(self):
         self.all_tiles = REGISTRY.get_all()
         # Rebuild list
-        self.list_container.clear() # Does clear work? No, need to kill children.
-        # Ideally we shouldn't rebuild every time, but it's easier.
-        # pygame_gui doesn't have clear(), so we iterate and kill.
-        # Actually UIScrollingContainer doesn't expose children easily.
-        # We can just kill the container and recreate it, or keep track of rows.
         
         # Let's recreate the container content
         # Note: killing container kills children? Yes.
@@ -88,8 +83,7 @@ class TileRegistryState(State):
             panel = UIPanel(
                 relative_rect=pygame.Rect(0, y, w - 60, row_h),
                 manager=self.ui_manager,
-                container=self.list_container,
-                layer_thickness=1
+                container=self.list_container
             )
             
             # Clickable overlay button (invisible or transparent)

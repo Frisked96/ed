@@ -62,8 +62,8 @@ class StatisticsState(State):
     def draw(self, surface):
         pass
 
-def menu_statistics(context, map_obj):
-    context.manager.push(StatisticsState(context.manager, context, map_obj))
+def menu_statistics(manager, renderer, map_obj):
+    manager.push(StatisticsState(manager, renderer, map_obj))
 
 
 class EditorPauseState(MenuState):

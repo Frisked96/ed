@@ -13,11 +13,17 @@ class Renderer:
         self.width, self.height = screen.get_size()
         
         self.font_size = 20
-        try:
-            self.font = pygame.font.SysFont("Courier New", self.font_size, bold=True)
-            if not self.font:
-                self.font = pygame.font.SysFont("monospace", self.font_size, bold=True)
-        except:
+        font_names = ["DejaVu Sans Mono", "FreeMono", "Courier New", "monospace", "Arial Unicode MS", "Segoe UI Symbol"]
+        self.font = None
+        for name in font_names:
+            try:
+                self.font = pygame.font.SysFont(name, self.font_size, bold=True)
+                if self.font and self.font.get_height() > 0:
+                    break
+            except:
+                continue
+        
+        if not self.font:
             self.font = pygame.font.Font(None, self.font_size)
             
         self.glyph_cache = {}
@@ -70,6 +76,8 @@ class Renderer:
             color = color_val
 
         surf = self.font.render(char, True, color, bg_color)
+        # If the font isn't bold enough, we could potentially blit it twice with an offset,
+        # but standard bold=True in SysFont should be sufficient if the font supports it.
         self.glyph_cache[key] = surf
         return surf
 
@@ -264,6 +272,24 @@ class Renderer:
                             d_surf = self.font.render(f"{dist:.1f}", True, (255, 200, 200))
                             self.screen.blit(d_surf, (int(mid_x), int(mid_y)))
                 last_p = p
+
+        # Live Sector Info
+        sec_x = session.cursor_x // grid_size
+        sec_y = session.cursor_y // grid_size
+        rel_x = session.cursor_x % grid_size
+        rel_y = session.cursor_y % grid_size
+        
+        info_lines = [
+            f"SECTOR: {sec_x}, {sec_y}",
+            f"LOCAL:  {rel_x}, {rel_y}",
+            f"TOTAL:  {session.cursor_x}, {session.cursor_y}"
+        ]
+        
+        y_off = self.height - 180
+        for line in info_lines:
+            surf = self.font.render(line, True, color)
+            self.screen.blit(surf, (self.width - surf.get_width() - 10, y_off))
+            y_off += 22
 
     def _draw_tool_preview(self, session):
         ts = session.tool_state

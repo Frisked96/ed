@@ -133,7 +133,8 @@ class TilePickerState(State):
                 relative_rect=pygame.Rect(px, py, tile_size, tile_size),
                 text=tile.char,
                 manager=self.ui_manager,
-                container=container
+                container=container,
+                object_id="#unicode_button"
             )
             # We can't easily set button color, so we rely on text char
             # Maybe tooltip for full name
@@ -225,7 +226,8 @@ class MultiTilePickerState(State):
                 relative_rect=pygame.Rect(px, py, tile_size, tile_size),
                 text=text,
                 manager=self.ui_manager,
-                container=container
+                container=container,
+                object_id="#unicode_button"
             )
             btn.tool_tip_text = f"{tile.name} ({tile.id})"
             if is_selected:

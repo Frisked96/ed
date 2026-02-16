@@ -91,6 +91,27 @@ class StateManager:
                 if event.type == pygame.QUIT:
                     self.running = False
                 
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F11:
+                        # Toggle Fullscreen
+                        is_fullscreen = self.screen.get_flags() & pygame.FULLSCREEN
+                        if is_fullscreen:
+                            self.screen = pygame.display.set_mode(self.screen.get_size(), pygame.RESIZABLE)
+                        else:
+                            self.screen = pygame.display.set_mode(self.screen.get_size(), pygame.FULLSCREEN)
+                        
+                        self.ui_manager.set_window_resolution(self.screen.get_size())
+                        renderer.screen = self.screen
+                        renderer.update_dimensions()
+
+                if event.type == pygame.VIDEORESIZE:
+                    # Pygame updates the display surface automatically when using RESIZABLE.
+                    # We just need to notify our systems of the new size and refresh references.
+                    self.ui_manager.set_window_resolution(event.size)
+                    self.screen = pygame.display.get_surface()
+                    renderer.screen = self.screen
+                    renderer.update_dimensions()
+
                 self.ui_manager.process_events(event)
                 
                 if self.states:

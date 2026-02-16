@@ -29,11 +29,12 @@ class MainMenuState(State):
         w, h = self.renderer.screen.get_size()
         
         # Title
-        UILabel(
+        title = UILabel(
             relative_rect=pygame.Rect((w // 2 - 200, 20), (400, 50)),
             text="=== ADVANCED MAP EDITOR ===",
             manager=self.ui_manager
         )
+        self.ui_elements.append(title)
 
         menu_options = [
             ("New Map", "new"),

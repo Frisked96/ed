@@ -107,7 +107,7 @@ class EditorState(State):
         elif event.type == pygame.VIDEORESIZE:
             self.renderer.update_dimensions()
             self.session.viewport_px_w = self.renderer.width
-            self.session.viewport_px_h = self.renderer.height - 120
+            self.session.viewport_px_h = self.renderer.height - 110 # Matches Renderer.draw_map logic for status bar
             
             # Update tile counts based on new pixel area
             self.session.view_width = self.session.viewport_px_w // self.renderer.tile_size

@@ -184,12 +184,24 @@ class ConfirmationState(State):
                     self.callback(False)
 
     def draw(self, surface):
+        # Determine dimensions and position (recalculate for resize)
+        font = self.context.font
+        prompt_w = font.size(self.prompt)[0]
+        self.box_w = max(400, prompt_w + 60)
+        self.box_h = 100
+        self.bx = (self.context.width - self.box_w) // 2
+        self.by = (self.context.height - self.box_h) // 2
+        
+        # Update button rects
+        self.yes_rect = pygame.Rect(self.bx + self.box_w//2 - 110, self.by + 50, 80, 30)
+        self.no_rect = pygame.Rect(self.bx + self.box_w//2 + 30, self.by + 50, 80, 30)
+
         s = pygame.Surface((self.box_w, self.box_h), pygame.SRCALPHA)
         s.fill((30, 30, 30, 240))
         surface.blit(s, (self.bx, self.by))
         pygame.draw.rect(surface, (255, 200, 0), (self.bx, self.by, self.box_w, self.box_h), 2)
 
-        text_surf = self.context.font.render(self.prompt, True, (255, 255, 255))
+        text_surf = font.render(self.prompt, True, (255, 255, 255))
         surface.blit(text_surf, (self.bx + (self.box_w - text_surf.get_width()) // 2, self.by + 15))
 
         # Draw Buttons
@@ -199,8 +211,8 @@ class ConfirmationState(State):
         pygame.draw.rect(surface, yes_color, self.yes_rect)
         pygame.draw.rect(surface, no_color, self.no_rect)
         
-        yes_txt = self.context.font.render("YES", True, (0,0,0))
-        no_txt = self.context.font.render("NO", True, (0,0,0))
+        yes_txt = font.render("YES", True, (0,0,0))
+        no_txt = font.render("NO", True, (0,0,0))
         
         surface.blit(yes_txt, (self.yes_rect.centerx - yes_txt.get_width()//2, self.yes_rect.centery - yes_txt.get_height()//2))
         surface.blit(no_txt, (self.no_rect.centerx - no_txt.get_width()//2, self.no_rect.centery - no_txt.get_height()//2))

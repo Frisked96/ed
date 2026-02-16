@@ -122,43 +122,74 @@ class EditorState(State):
         )
 
         tiles = REGISTRY.get_all()
-        # Make the buttons much larger to reduce relative padding
-        tile_size = 80
+        # List view: Icon + Name
+        tile_size = 64
         padding = 5
-        cols = max(1, (win_w - 60) // (tile_size + padding))
+        row_height = tile_size + padding
+        
+        scroll_h = len(tiles) * row_height + padding
 
-        scroll_h = 0
+        container.set_scrollable_area_dimensions((win_w - 50, scroll_h))
+        
         for i, tile in enumerate(tiles):
-            c = i % cols
-            r = i // cols
-            px = padding + c * (tile_size + padding)
-            py = padding + r * (tile_size + padding)
+            py = padding + i * row_height
+            px = padding
 
             # Use color if available
             color_hex = "#FFFFFF"
-            if isinstance(tile.color, str):
+            # (Color logic for text if needed, but we use image for icon now)
+
+            # 1. Generate preview surface
+            # We need a large preview. Renderer has get_preview_surface(char, size, color, bg_color)
+            # Get RGB color
+            rgb = (255, 255, 255)
+            if isinstance(tile.color, (list, tuple)):
+                rgb = tuple(tile.color)
+            elif isinstance(tile.color, str):
                 from core import COLOR_MAP
                 rgb = COLOR_MAP.get(tile.color.lower(), (255, 255, 255))
-                color_hex = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
-            elif isinstance(tile.color, (list, tuple)):
-                color_hex = f"#{tile.color[0]:02x}{tile.color[1]:02x}{tile.color[2]:02x}"
-
+            
+            # Generate glyph surface
+            # Use existing renderer method and scale up
+            base_surf = self.renderer.get_glyph(tile.id)
+            if base_surf:
+                glyph_surf = pygame.transform.scale(base_surf, (tile_size, tile_size))
+            else:
+                glyph_surf = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+            
+            # 2. Create UIImage
+            img = pygame_gui.elements.UIImage(
+                relative_rect=pygame.Rect(px, py, tile_size, tile_size),
+                image_surface=glyph_surf,
+                manager=self.ui_manager,
+                container=container
+            )
+            
+            # 3. Create Transparent Button on top for interaction
             btn = UIButton(
                 relative_rect=pygame.Rect(px, py, tile_size, tile_size),
-                text=tile.char,
+                text="",
                 manager=self.ui_manager,
                 container=container,
-                tool_tip_text=f"{tile.name} ({tile.id})",
-                object_id="#unicode_button"
+                object_id="#palette_icon"
             )
-            # Apply color via HTML if possible (pygame_gui supports this in some versions/elements)
-            # If standard text doesn't show color, we might need a custom theme or images.
-            # For now, let's at least ensure the ID is tracked correctly.
-            
             self.palette_buttons[btn] = tile.id
-            scroll_h = max(scroll_h, py + tile_size + padding)
+            
+            # 4. Create Label next to it
+            label_text = f"{tile.name}"
+            # Add ID for clarity? f"{tile.name} ({tile.id})"
+            
+            lbl = UILabel(
+                relative_rect=pygame.Rect(px + tile_size + 10, py, win_w - (px + tile_size + 40), tile_size),
+                text=label_text,
+                manager=self.ui_manager,
+                container=container,
+                object_id="#palette_label"
+            )
+            # Align text to left? Default is center.
+            # We might want a new style for palette labels to align left.
+            # But center is fine for now.
 
-        container.set_scrollable_area_dimensions((win_w - 50, scroll_h))
 
     def handle_event(self, event):
         if event.type == pygame.VIDEORESIZE:

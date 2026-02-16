@@ -13,7 +13,7 @@
   {
     "id": 2,
     "char": "#",
-    "name": "Wall",
+    "name": "Solid Wall",
     "color": [120, 120, 120],
     "bg_color": null,
     "blocks_movement": true,
@@ -59,7 +59,7 @@
   {
     "id": 6,
     "char": "@",
-    "name": "Player",
+    "name": "Player Spawn",
     "color": [255, 255, 0],
     "bg_color": null,
     "blocks_movement": true,
@@ -70,7 +70,7 @@
   {
     "id": 7,
     "char": "\u2500",
-    "name": "Box Horiz",
+    "name": "Wall (Horizontal)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -81,7 +81,7 @@
   {
     "id": 8,
     "char": "\u2502",
-    "name": "Box Vert",
+    "name": "Wall (Vertical)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -92,7 +92,7 @@
   {
     "id": 9,
     "char": "\u250c",
-    "name": "Box TL",
+    "name": "Corner (Top-Left)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -103,7 +103,7 @@
   {
     "id": 10,
     "char": "\u2510",
-    "name": "Box TR",
+    "name": "Corner (Top-Right)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -114,7 +114,7 @@
   {
     "id": 11,
     "char": "\u2514",
-    "name": "Box BL",
+    "name": "Corner (Bot-Left)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -125,7 +125,7 @@
   {
     "id": 12,
     "char": "\u2518",
-    "name": "Box BR",
+    "name": "Corner (Bot-Right)",
     "color": [200, 200, 200],
     "bg_color": null,
     "blocks_movement": true,
@@ -136,7 +136,7 @@
   {
     "id": 13,
     "char": "\u2550",
-    "name": "Dbl Horiz",
+    "name": "Dbl Wall (Horiz)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -147,7 +147,7 @@
   {
     "id": 14,
     "char": "\u2551",
-    "name": "Dbl Vert",
+    "name": "Dbl Wall (Vert)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -158,7 +158,7 @@
   {
     "id": 15,
     "char": "\u2554",
-    "name": "Dbl TL",
+    "name": "Dbl Corner (TL)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -169,7 +169,7 @@
   {
     "id": 16,
     "char": "\u2557",
-    "name": "Dbl TR",
+    "name": "Dbl Corner (TR)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -180,7 +180,7 @@
   {
     "id": 17,
     "char": "\u255a",
-    "name": "Dbl BL",
+    "name": "Dbl Corner (BL)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -191,7 +191,7 @@
   {
     "id": 18,
     "char": "\u255d",
-    "name": "Dbl BR",
+    "name": "Dbl Corner (BR)",
     "color": [220, 220, 220],
     "bg_color": null,
     "blocks_movement": true,
@@ -202,7 +202,7 @@
   {
     "id": 19,
     "char": "+",
-    "name": "Door",
+    "name": "Door (Closed)",
     "color": [139, 69, 19],
     "bg_color": null,
     "blocks_movement": true,
@@ -213,7 +213,7 @@
   {
     "id": 20,
     "char": "/",
-    "name": "Open Door",
+    "name": "Door (Open)",
     "color": [139, 69, 19],
     "bg_color": null,
     "blocks_movement": false,
@@ -257,7 +257,7 @@
   {
     "id": 24,
     "char": "\u2591",
-    "name": "Light Shade",
+    "name": "Shade (Light)",
     "color": [100, 100, 100],
     "bg_color": null,
     "blocks_movement": false,
@@ -268,7 +268,7 @@
   {
     "id": 25,
     "char": "\u2592",
-    "name": "Medium Shade",
+    "name": "Shade (Medium)",
     "color": [100, 100, 100],
     "bg_color": null,
     "blocks_movement": false,
@@ -279,11 +279,121 @@
   {
     "id": 26,
     "char": "\u2593",
-    "name": "Dark Shade",
+    "name": "Shade (Dark)",
     "color": [100, 100, 100],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 27,
+    "char": "\u251c",
+    "name": "T-Junct (Right)",
+    "color": [200, 200, 200],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 28,
+    "char": "\u2524",
+    "name": "T-Junct (Left)",
+    "color": [200, 200, 200],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 29,
+    "char": "\u252c",
+    "name": "T-Junct (Down)",
+    "color": [200, 200, 200],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 30,
+    "char": "\u2534",
+    "name": "T-Junct (Up)",
+    "color": [200, 200, 200],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 31,
+    "char": "\u253c",
+    "name": "Intersection (+)",
+    "color": [200, 200, 200],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 32,
+    "char": "\u2560",
+    "name": "Dbl T-Junct (R)",
+    "color": [220, 220, 220],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 33,
+    "char": "\u2563",
+    "name": "Dbl T-Junct (L)",
+    "color": [220, 220, 220],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 34,
+    "char": "\u2566",
+    "name": "Dbl T-Junct (D)",
+    "color": [220, 220, 220],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 35,
+    "char": "\u2569",
+    "name": "Dbl T-Junct (U)",
+    "color": [220, 220, 220],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 36,
+    "char": "\u256c",
+    "name": "Dbl Intersect (+)",
+    "color": [220, 220, 220],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
     "properties": {},
     "animation": null
   }

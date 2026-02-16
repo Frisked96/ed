@@ -28,17 +28,30 @@
             "normal_text": "#FFFFFF"
         }
     },
-    "#unicode_button": {
+    "#palette_icon": {
+        "colours": {
+            "normal_bg": "#00000000",
+            "hovered_bg": "#FFFFFF22",
+            "active_bg": "#FFFFFF44",
+            "normal_border": "#00000000",
+            "hovered_border": "#FFFFFF"
+        },
+        "misc": {
+            "border_width": 1
+        }
+    },
+    "#palette_label": {
         "font": {
             "name": "app_font",
-            "size": 48,
+            "size": 16,
             "style": "bold"
         },
         "colours": {
             "normal_text": "#FFFFFF"
         },
         "misc": {
-            "padding": "2,2"
+            "text_horiz_alignment": "left",
+            "text_vert_alignment": "center"
         }
     }
 }

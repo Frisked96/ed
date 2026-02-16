@@ -139,8 +139,10 @@ class ResizeMapState(FormState):
         super().__init__(manager, context, "RESIZE MAP", fields, on_submit)
 
 
+# context here assumes Renderer usually, but we need manager.
+# Standardize: manager, context (renderer/session), ...
 
-def menu_save_map(context, map_obj, filename=None):
+def menu_save_map(manager, context, map_obj, filename=None):
     if filename:
         from map_io import autosave_map as io_save
         return io_save(map_obj, filename)
@@ -150,8 +152,8 @@ def menu_save_map(context, map_obj, filename=None):
             from map_io import autosave_map as io_save
             io_save(map_obj, fname)
             map_obj.dirty = False
-    context.manager.push(TextInputState(context.manager, context, "Save map as: ", on_filename))
+    manager.push(TextInputState(manager, context, "Save map as: ", on_filename))
     return True
 
-def menu_resize_map(context, map_obj, view_width, view_height, callback):
-    context.manager.push(ResizeMapState(context.manager, context, map_obj, view_width, view_height, callback))
+def menu_resize_map(manager, context, map_obj, view_width, view_height, callback):
+    manager.push(ResizeMapState(manager, context, map_obj, view_width, view_height, callback))

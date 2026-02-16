@@ -29,6 +29,8 @@ class Renderer:
 
     def draw_notifications(self, notifications):
         """Purely visual: takes a list of active notification objects and draws them."""
+        # This is handled by StateManager in main loop usually, but passed here?
+        # StateManager calls renderer.draw_notifications
         y = 10
         now = time.time()
         for n in notifications:
@@ -104,10 +106,10 @@ class Renderer:
         return surf
 
     def draw_map(self, session):
-        # Clear the whole screen first to ensure no bleeding behind status bar
+        # Clear the whole screen first
         self.screen.fill((0, 0, 0))
         
-        # Set clipping to viewport
+        # Set clipping to viewport (handled by session.viewport_px_w/h)
         viewport_rect = pygame.Rect(0, 0, session.viewport_px_w, session.viewport_px_h)
         self.screen.set_clip(viewport_rect)
         
@@ -119,12 +121,9 @@ class Renderer:
         tool_state = session.tool_state
         
         # 1. Determine visible chunks
-        # Use floor/ceil to ensure we cover every visible pixel
         start_cx = int(cam_x // self.chunk_size)
         start_cy = int(cam_y // self.chunk_size)
         
-        # Calculate how many chunks are needed to cover the view width/height
-        # Adding 1 or 2 as a buffer to avoid "rendering in" artifacts at edges
         end_cx = int((cam_x + view_w + 1) // self.chunk_size)
         end_cy = int((cam_y + view_h + 1) // self.chunk_size)
         
@@ -143,9 +142,6 @@ class Renderer:
                 self.screen.blit(chunk_surf, (px, py))
 
         # Clipping bounds for overlays (UI area check)
-        # We don't want to draw map overlays over the status bar
-        
-        # Pre-calculate viewport bounds within the map for overlays
         start_vx = max(0, -cam_x)
         start_vy = max(0, -cam_y)
         end_vx = min(view_w, session.map_obj.width - cam_x)
@@ -154,13 +150,11 @@ class Renderer:
         # Selection highlight
         if session.selection_start:
             x0, y0 = session.selection_start
-            # Use cursor for end point if selection is in progress
             x1, y1 = session.selection_end if session.selection_end else (session.cursor_x, session.cursor_y)
             
             sx0, sx1 = (x0, x1) if x0 < x1 else (x1, x0)
             sy0, sy1 = (y0, y1) if y0 < y1 else (y1, y0)
             
-            # Intersection of selection and viewport
             ix0 = max(sx0, cam_x + start_vx)
             iy0 = max(sy0, cam_y + start_vy)
             ix1 = min(sx1, cam_x + end_vx - 1)
@@ -172,9 +166,7 @@ class Renderer:
                 sel_pw = (ix1 - ix0 + 1) * tile_size
                 sel_ph = (iy1 - iy0 + 1) * tile_size
                 
-                # Draw filled rect and border
                 color = (60, 60, 120) if session.selection_end else (60, 60, 180, 100)
-                # Use surface for alpha if needed, or just solid
                 pygame.draw.rect(self.screen, color, (sel_px, sel_py, sel_pw, sel_ph))
                 pygame.draw.rect(self.screen, (100, 100, 255), (sel_px, sel_py, sel_pw, sel_ph), 2)
 
@@ -184,7 +176,6 @@ class Renderer:
         bx0, by0 = session.cursor_x - offset, session.cursor_y - offset
         bx1, by1 = bx0 + br - 1, by0 + br - 1
         
-        # Intersection of brush and viewport
         ibx0 = max(bx0, cam_x + start_vx)
         iby0 = max(by0, cam_y + start_vy)
         ibx1 = min(bx1, cam_x + end_vx - 1)
@@ -197,7 +188,6 @@ class Renderer:
             b_ph = (iby1 - iby0 + 1) * tile_size
             pygame.draw.rect(self.screen, (100, 100, 100), (b_px, b_py, b_pw, b_ph))
             
-            # Bright cursor center
             if ibx0 <= session.cursor_x <= ibx1 and iby0 <= session.cursor_y <= iby1:
                 c_px = (session.cursor_x - cam_x) * tile_size
                 c_py = (session.cursor_y - cam_y) * tile_size
@@ -206,10 +196,7 @@ class Renderer:
         self._draw_tool_preview(session)
         self._draw_measurement_overlay(session)
         
-        # Reset clipping for UI elements
         self.screen.set_clip(None)
-        
-        session.status_y = self.height - 110
 
     def _draw_measurement_overlay(self, session):
         if not session.tool_state.measurement_active: return
@@ -238,7 +225,6 @@ class Renderer:
         end_x = min(end_x, session.map_obj.width)
         end_y = min(end_y, session.map_obj.height)
 
-        # Performance guard: Don't render too many labels
         pixel_grid = grid_size * self.tile_size
         render_labels = show_coords and (pixel_grid > 20)
 
@@ -264,7 +250,7 @@ class Renderer:
                 px = (p[0] - cam_x) * self.tile_size + self.tile_size // 2
                 py = (p[1] - cam_y) * self.tile_size + self.tile_size // 2
                 
-                if 0 <= px <= self.width and 0 <= py <= self.height - 120:
+                if 0 <= px <= self.width and 0 <= py <= self.height:
                     pygame.draw.circle(self.screen, (255, 100, 100), (int(px), int(py)), 5)
                     
                     if last_p:
@@ -274,28 +260,10 @@ class Renderer:
                         
                         dist = get_distance(last_p, p)
                         mid_x, mid_y = (lpx + px) // 2, (lpy + py) // 2
-                        if 0 <= mid_x <= self.width and 0 <= mid_y <= self.height - 120:
+                        if 0 <= mid_x <= self.width and 0 <= mid_y <= self.height:
                             d_surf = self.font.render(f"{dist:.1f}", True, (255, 200, 200))
                             self.screen.blit(d_surf, (int(mid_x), int(mid_y)))
                 last_p = p
-
-        # Live Sector Info
-        sec_x = session.cursor_x // grid_size
-        sec_y = session.cursor_y // grid_size
-        rel_x = session.cursor_x % grid_size
-        rel_y = session.cursor_y % grid_size
-        
-        info_lines = [
-            f"SECTOR: {sec_x}, {sec_y}",
-            f"LOCAL:  {rel_x}, {rel_y}",
-            f"TOTAL:  {session.cursor_x}, {session.cursor_y}"
-        ]
-        
-        y_off = self.height - 180
-        for line in info_lines:
-            surf = self.font.render(line, True, color)
-            self.screen.blit(surf, (self.width - surf.get_width() - 10, y_off))
-            y_off += 22
 
     def _draw_tool_preview(self, session):
         ts = session.tool_state
@@ -317,10 +285,7 @@ class Renderer:
         color = (255, 255, 0) # Yellow for preview
         if ts.mode == 'select': color = (100, 100, 255) # Blue for selection
         
-        # Draw each point as a tile highlight
         for px, py in points:
-            # Simple bounds check to avoid drawing off-screen too much
-            # (Pygame handles off-screen drawing, but no need to process huge lists if way off)
             if px < cam_x - 1 or py < cam_y - 1 or \
                px > cam_x + (self.width // self.tile_size) + 1 or \
                py > cam_y + (self.height // self.tile_size) + 1:
@@ -329,118 +294,4 @@ class Renderer:
             scr_x = (px - cam_x) * self.tile_size
             scr_y = (py - cam_y) * self.tile_size
             
-            # Draw a hollow square for the tile
             pygame.draw.rect(self.screen, color, (scr_x, scr_y, self.tile_size, self.tile_size), 1)
-
-    def draw_status(self, session):
-        y_base = session.status_y + 10
-        ts = session.tool_state
-        
-        # 1. Active Tile Preview Box
-        preview_rect = (10, y_base, 60, 60)
-        pygame.draw.rect(self.screen, (30, 30, 30), preview_rect)
-        pygame.draw.rect(self.screen, (150, 150, 150), preview_rect, 1)
-        
-        sel_tile = REGISTRY.get(session.selected_tile_id)
-        if sel_tile:
-            # Draw a larger version of the tile character
-            big_font = pygame.font.SysFont("Courier New", 40, bold=True)
-            char_surf = big_font.render(sel_tile.char, True, 
-                                        COLOR_MAP.get(sel_tile.color.lower(), (255, 255, 255)) 
-                                        if isinstance(sel_tile.color, str) else sel_tile.color)
-            self.screen.blit(char_surf, (preview_rect[0] + 15, preview_rect[1] + 5))
-            
-            name_surf = self.font.render(sel_tile.name[:10], True, (150, 150, 150))
-            self.screen.blit(name_surf, (preview_rect[0], preview_rect[1] + 65))
-
-        # 2. Detailed Info Columns
-        col1_x = 85
-        col2_x = 350
-        col3_x = 650
-
-        # Column 1: Mode and Position
-        mode_display = ts.mode.upper()
-        if ts.recording: mode_display += " (REC)"
-        
-        lines_c1 = [
-            f"MODE:   {mode_display}",
-            f"CURSOR: {session.cursor_x}, {session.cursor_y}",
-            f"CAMERA: {session.camera_x}, {session.camera_y}"
-        ]
-
-        # Column 2: Tools Settings
-        lines_c2 = [
-            f"BRUSH:     {ts.brush_size}x{ts.brush_size} {'(Custom)' if ts.brush_shape else ''}",
-            f"AUTO-TILE: {'ENABLED' if ts.auto_tiling else 'DISABLED'}",
-            f"SNAP:      {'ON' if ts.snap_size > 1 else 'OFF'} ({ts.snap_size})"
-        ]
-
-        # Column 3: Stats & Quick Keys
-        lines_c3 = [
-            f"MAP:  {session.map_obj.width}x{session.map_obj.height}",
-            f"UNDO: {session.undo_stack.undo_count} / REDO: {session.undo_stack.redo_count}",
-            "[F1] Menu | [?] Help | [Q] Quit"
-        ]
-
-        for i, line in enumerate(lines_c1):
-            self.screen.blit(self.font.render(line, True, (255, 255, 255)), (col1_x, y_base + i * 22))
-        for i, line in enumerate(lines_c2):
-            self.screen.blit(self.font.render(line, True, (200, 200, 255) if "ENABLED" in line or "ON" in line else (200, 200, 200)), (col2_x, y_base + i * 22))
-        for i, line in enumerate(lines_c3):
-            self.screen.blit(self.font.render(line, True, (200, 255, 200)), (col3_x, y_base + i * 22))
-
-    def draw_palette(self, session):
-        if not session.tool_state.show_palette: return None
-
-        all_tiles = list(REGISTRY.get_all())
-        if not all_tiles: return None
-        
-        # Layout
-        cols = 5
-        tile_spacing = 35
-        # Calculate height based on rows
-        rows = (len(all_tiles) + cols - 1) // cols
-        palette_w = cols * tile_spacing + 30
-        palette_h = rows * tile_spacing + 60
-        palette_h = min(palette_h, self.height - 100) # Cap height
-        
-        x_base = self.width - palette_w - 20
-        y_base = 60 # Below top bar/status
-        
-        # Background
-        s = pygame.Surface((palette_w, palette_h), pygame.SRCALPHA)
-        s.fill((30, 30, 30, 230))
-        self.screen.blit(s, (x_base, y_base))
-        pygame.draw.rect(self.screen, (200, 200, 200), (x_base, y_base, palette_w, palette_h), 2)
-        
-        # Title
-        title = self.font.render("PALETTE", True, (255, 255, 0))
-        self.screen.blit(title, (x_base + (palette_w - title.get_width())//2, y_base + 10))
-        
-        clickable_rects = []
-        
-        start_x = x_base + 15
-        start_y = y_base + 40
-        
-        for i, tile in enumerate(all_tiles):
-            c = i % cols
-            r = i // cols
-            
-            px = start_x + c * tile_spacing
-            py = start_y + r * tile_spacing
-            
-            if py + tile_spacing > y_base + palette_h: break
-            
-            rect = pygame.Rect(px, py, self.tile_size, self.tile_size)
-            clickable_rects.append((rect, tile.id))
-            
-            # Highlight selected
-            if tile.id == session.selected_tile_id:
-                pygame.draw.rect(self.screen, (255, 255, 0), (px-2, py-2, self.tile_size+4, self.tile_size+4), 2)
-            
-            glyph = self.get_glyph(tile.id)
-            if glyph:
-                self.screen.blit(glyph, (px, py))
-                
-        return pygame.Rect(x_base, y_base, palette_w, palette_h), clickable_rects
-

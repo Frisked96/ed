@@ -1,55 +1,88 @@
 import pygame
-import sys
-from statemachine import StateMachine, State as SMState
+import pygame_gui
+from pygame_gui.elements import UIWindow, UISelectionList, UILabel, UIButton, UIScrollingContainer
 from state_engine import State
 from map_io import save_config
-from menu.base import _render_menu_generic, TextInputState
-
-class ControlSettingsMachine(StateMachine):
-    browsing = SMState(initial=True)
-    capturing = SMState()
-    
-    start_capture = browsing.to(capturing)
-    finish_capture = capturing.to(browsing)
-    cancel_capture = capturing.to(browsing)
+from menu.base import TextInputState, MenuState
 
 class ControlSettingsState(State):
     def __init__(self, manager, context, bindings):
         super().__init__(manager)
         self.context = context
         self.bindings = bindings
-        self.machine = ControlSettingsMachine()
         self.actions = sorted(list(bindings.keys()))
-        self.selected_idx = 0
-        self.scroll_offset = 0
+        self.window = None
+        self.buttons = {} # ui_element -> action_name
+        self.capturing = None # action being captured
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        win_w, win_h = 600, h - 100
+        rect = pygame.Rect((w - win_w) // 2, (h - win_h) // 2, win_w, win_h)
+
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title="EDIT CONTROLS",
+            resizable=True
+        )
+
+        container = UIScrollingContainer(
+            relative_rect=pygame.Rect(0, 0, win_w - 30, win_h - 40),
+            manager=self.ui_manager,
+            container=self.window,
+            anchors={'top': 'top', 'bottom': 'bottom', 'left': 'left', 'right': 'right'}
+        )
+
+        y = 10
+        for action in self.actions:
+            key_name = self.bindings[action]
+
+            UILabel(
+                relative_rect=pygame.Rect(10, y, 250, 30),
+                text=action,
+                manager=self.ui_manager,
+                container=container
+            )
+
+            btn = UIButton(
+                relative_rect=pygame.Rect(270, y, 200, 30),
+                text=key_name,
+                manager=self.ui_manager,
+                container=container
+            )
+            self.buttons[btn] = action
+            y += 40
+
+        container.set_scrollable_area_dimensions((win_w - 50, y + 10))
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
 
     def handle_event(self, event):
-        if self.machine.current_state == ControlSettingsMachine.browsing:
-            if event.type == pygame.KEYDOWN:
-                self._handle_browsing(event)
-        elif self.machine.current_state == ControlSettingsMachine.capturing:
-            if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
-                self._handle_capturing(event)
+        if self.capturing:
+            self._handle_capture(event)
+            return
 
-    def _handle_browsing(self, event):
-        key = event.key
-        if key == pygame.K_UP:
-            self.selected_idx = max(0, self.selected_idx - 1)
-        elif key == pygame.K_DOWN:
-            self.selected_idx = min(len(self.actions) - 1, self.selected_idx + 1)
-        elif key == pygame.K_PAGEUP:
-            self.selected_idx = max(0, self.selected_idx - 10)
-        elif key == pygame.K_PAGEDOWN:
-            self.selected_idx = min(len(self.actions) - 1, self.selected_idx + 10)
-        elif key == pygame.K_RETURN:
-            self.machine.start_capture()
-        elif key in [pygame.K_q, pygame.K_ESCAPE]:
-            self.manager.pop()
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element in self.buttons:
+                action = self.buttons[event.ui_element]
+                self.capturing = action
+                event.ui_element.set_text("Press Key...")
+                event.ui_element.disable()
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
 
-    def _handle_capturing(self, event):
+    def _handle_capture(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.machine.cancel_capture()
+                # Cancel
+                self._end_capture(self.bindings[self.capturing])
                 return
 
             # Ignore modifier keys
@@ -57,111 +90,124 @@ class ControlSettingsState(State):
                             pygame.K_LALT, pygame.K_RALT, pygame.K_LGUI, pygame.K_RGUI, pygame.K_CAPSLOCK]:
                 return
 
-            action = self.actions[self.selected_idx]
             key_name = pygame.key.name(event.key)
-            
-            # Use unicode for single-character keys to respect Shift/Caps Lock (e.g., 'A' instead of 'a', '!' instead of '1')
-            # But preserve special key names like 'space', 'return', 'tab'
             if len(key_name) == 1 and event.unicode:
                 key_name = event.unicode
 
-            self.bindings[action] = key_name
+            self.bindings[self.capturing] = key_name
             save_config(self.bindings)
-            self.machine.finish_capture()
+            self._end_capture(key_name)
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            action = self.actions[self.selected_idx]
-            # Map button index to string identifier
-            # 1: Left, 2: Middle, 3: Right, 4: Scroll Up, 5: Scroll Down
             key_name = f"mouse {event.button}"
-            
-            self.bindings[action] = key_name
+            self.bindings[self.capturing] = key_name
             save_config(self.bindings)
-            self.machine.finish_capture()
+            self._end_capture(key_name)
+
+    def _end_capture(self, new_text):
+        # Find button
+        for btn, action in self.buttons.items():
+            if action == self.capturing:
+                btn.set_text(new_text)
+                btn.enable()
+                break
+        self.capturing = None
 
     def draw(self, surface):
-        self.context.screen.fill((0, 0, 0))
-        font = self.context.font
-        tile_size = self.context.tile_size
-        visible_actions = (self.context.height - 150) // tile_size
-        
-        if self.selected_idx < self.scroll_offset:
-            self.scroll_offset = self.selected_idx
-        elif self.selected_idx >= self.scroll_offset + visible_actions:
-            self.scroll_offset = self.selected_idx - visible_actions + 1
+        pass
 
-        surface.blit(font.render("=== EDIT CONTROLS ===", True, (255, 255, 255)), (10, 10))
-        surface.blit(font.render("Action                          Key", True, (255, 255, 255)), (10, 2 * tile_size + 10))
-        surface.blit(font.render("-" * 50, True, (255, 255, 255)), (10, 3 * tile_size + 10))
-
-        y = 4 * tile_size + 10
-        for i in range(visible_actions):
-            idx = self.scroll_offset + i
-            if idx >= len(self.actions): break
-            action = self.actions[idx]
-            key_name = self.bindings[action]
-            line = f"{action:<30} {key_name}"
-
-            color = (255, 255, 255)
-            if idx == self.selected_idx:
-                pygame.draw.rect(surface, (60, 60, 60), (0, y, self.context.width, tile_size))
-                color = (255, 255, 0)
-
-            surface.blit(font.render(line, True, color), (10, y))
-            y += tile_size
-
-        help_y = self.context.height - 80
-        if self.machine.current_state == ControlSettingsMachine.browsing:
-            surface.blit(font.render("Up/Down: Select | Enter: Change | Q: Back", True, (0, 255, 0)), (10, help_y))
-        else:
-            action = self.actions[self.selected_idx]
-            surface.blit(font.render(f"Press new key for '{action}' (Esc to cancel)...", True, (255, 255, 0)), (10, help_y))
-
-class AutosaveSettingsState(State):
+class AutosaveSettingsState(MenuState):
     def __init__(self, manager, context, tool_state):
-        super().__init__(manager)
-        self.context = context
         self.tool_state = tool_state
-        self.selected = 0
+        self.base_options = ["Enabled", "Mode", "Interval/Threshold", "Filename", "Back"]
+        # MenuState expects static options list, but we want dynamic labels.
+        # We can pass dummy list and override update?
+        # Or just rebuild menu every time?
+        # MenuState logic is simple.
+        # Let's use a custom implementation inheriting from MenuState but overriding enter to build dynamic list?
+        # No, simpler: Just use callbacks to update state and REBUILD the menu (pop/push).
+        # Or better: AutosaveSettingsState should just be a UIWindow with specific controls (checkboxes, inputs).
+        # But for now, let's stick to MenuState pattern but using dynamic labels is hard with standard MenuState.
+        # I'll implement it as a custom UIWindow state.
+        super().__init__(manager, context, "AUTOSAVE SETTINGS", []) # Dummy options
+
+    def enter(self, **kwargs):
+        # Override MenuState.enter to build custom UI
+        w, h = self.manager.screen.get_size()
+        rect = pygame.Rect((w - 400) // 2, (h - 400) // 2, 400, 400)
+
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title="AUTOSAVE SETTINGS"
+        )
+
+        self.labels = {}
+        ts = self.tool_state
+        
+        y = 20
+        # Enabled
+        UILabel(pygame.Rect(20, y, 150, 30), "Enabled:", self.ui_manager, container=self.window)
+        self.btn_enabled = UIButton(pygame.Rect(180, y, 100, 30), "Yes" if ts.autosave_enabled else "No", self.ui_manager, container=self.window)
+        y += 40
+
+        # Mode
+        UILabel(pygame.Rect(20, y, 150, 30), "Mode:", self.ui_manager, container=self.window)
+        self.btn_mode = UIButton(pygame.Rect(180, y, 100, 30), ts.autosave_mode.capitalize(), self.ui_manager, container=self.window)
+        y += 40
+
+        # Interval/Threshold
+        label_text = "Interval (min):" if ts.autosave_mode == 'time' else "Threshold:"
+        val_text = str(ts.autosave_interval) if ts.autosave_mode == 'time' else str(ts.autosave_edits_threshold)
+        self.lbl_val = UILabel(pygame.Rect(20, y, 150, 30), label_text, self.ui_manager, container=self.window)
+        self.btn_val = UIButton(pygame.Rect(180, y, 100, 30), val_text, self.ui_manager, container=self.window)
+        y += 40
+
+        # Filename
+        UILabel(pygame.Rect(20, y, 150, 30), "Filename:", self.ui_manager, container=self.window)
+        self.btn_filename = UIButton(pygame.Rect(180, y, 180, 30), ts.autosave_filename, self.ui_manager, container=self.window)
+        y += 40
 
     def handle_event(self, event):
-        if event.type != pygame.KEYDOWN: return
-        
-        if event.key == pygame.K_UP: self.selected = max(0, self.selected - 1)
-        elif event.key == pygame.K_DOWN: self.selected = min(4, self.selected + 1)
-        elif event.key == pygame.K_ESCAPE: self.manager.pop()
-        elif event.key == pygame.K_RETURN:
-            if self.selected == 0: 
-                self.tool_state.autosave_enabled = not self.tool_state.autosave_enabled
-            elif self.selected == 1: 
-                self.tool_state.autosave_mode = 'edits' if self.tool_state.autosave_mode == 'time' else 'time'
-            elif self.selected == 2:
-                if self.tool_state.autosave_mode == 'time':
-                    def on_val(val):
-                        if val: self.tool_state.autosave_interval = int(val)
-                    self.manager.push(TextInputState(self.manager, self.context, "Interval (min): ", on_val))
+        ts = self.tool_state
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.btn_enabled:
+                ts.autosave_enabled = not ts.autosave_enabled
+                self.btn_enabled.set_text("Yes" if ts.autosave_enabled else "No")
+            elif event.ui_element == self.btn_mode:
+                ts.autosave_mode = 'edits' if ts.autosave_mode == 'time' else 'time'
+                self.btn_mode.set_text(ts.autosave_mode.capitalize())
+                # Update val label/btn
+                label_text = "Interval (min):" if ts.autosave_mode == 'time' else "Threshold:"
+                val_text = str(ts.autosave_interval) if ts.autosave_mode == 'time' else str(ts.autosave_edits_threshold)
+                self.lbl_val.set_text(label_text)
+                self.btn_val.set_text(val_text)
+            elif event.ui_element == self.btn_val:
+                if ts.autosave_mode == 'time':
+                    def on_v(v):
+                        if v:
+                            ts.autosave_interval = int(v)
+                            self.btn_val.set_text(str(v))
+                    self.manager.push(TextInputState(self.manager, self.context, "Interval (min):", on_v))
                 else:
-                    def on_val(val):
-                        if val: self.tool_state.autosave_edits_threshold = int(val)
-                    self.manager.push(TextInputState(self.manager, self.context, "Threshold: ", on_val))
-            elif self.selected == 3:
-                def on_val(val):
-                    if val: self.tool_state.autosave_filename = val
-                self.manager.push(TextInputState(self.manager, self.context, "Filename: ", on_val))
-            elif self.selected == 4: 
-                self.manager.pop()
+                    def on_v(v):
+                        if v:
+                            ts.autosave_edits_threshold = int(v)
+                            self.btn_val.set_text(str(v))
+                    self.manager.push(TextInputState(self.manager, self.context, "Threshold:", on_v))
+            elif event.ui_element == self.btn_filename:
+                def on_f(v):
+                    if v:
+                        ts.autosave_filename = v
+                        self.btn_filename.set_text(v)
+                self.manager.push(TextInputState(self.manager, self.context, "Filename:", on_f))
 
-    def draw(self, surface):
-        lines = ["=== AUTOSAVE SETTINGS ==="]
-        lines.append(f"1. Enabled: {'Yes' if self.tool_state.autosave_enabled else 'No'}")
-        lines.append(f"2. Mode: {self.tool_state.autosave_mode.capitalize()}")
-        if self.tool_state.autosave_mode == 'time':
-            lines.append(f"3. Interval: {self.tool_state.autosave_interval} min")
-        else:
-            lines.append(f"3. Threshold: {self.tool_state.autosave_edits_threshold} edits")
-        lines.append(f"4. Filename: {self.tool_state.autosave_filename}")
-        lines.append("5. Back")
-        _render_menu_generic(self.context, "AUTOSAVE", lines, self.selected)
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
 
 def menu_autosave_settings(context, tool_state):
     context.manager.push(AutosaveSettingsState(context.manager, context, tool_state))

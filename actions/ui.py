@@ -13,7 +13,7 @@ def handle_editor_menu(session, manager, action=None):
     flow = manager.flow
     def on_choice(choice):
         if choice == "Save Map":
-            if menu_save_map(manager, session.map_obj):
+            if menu_save_map(manager, manager.flow.renderer, session.map_obj):
                 session.map_obj.dirty = False
         elif choice == "Load Map":
             def _on_loaded(m):

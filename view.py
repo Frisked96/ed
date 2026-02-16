@@ -64,6 +64,30 @@ class Renderer:
         if char == '█':
             s.fill(color)
             return s
+
+        # Draw shades
+        if char in ('░', '▒', '▓'):
+            s.fill(bg_color if bg_color else (0, 0, 0, 0))
+            # Determine density
+            if char == '░': density = 0.25
+            elif char == '▒': density = 0.5
+            else: density = 0.75
+            
+            # Draw a stipple pattern that fills the tile
+            for y in range(ts):
+                for x in range(ts):
+                    # Use a stable pseudo-random check based on x, y to make it look like a shade
+                    # A simple checkerboard or bayer matrix would be better for tiling
+                    if char == '▒': # Medium shade - checkerboard
+                        if (x + y) % 2 == 0:
+                            s.set_at((x, y), color)
+                    elif char == '░': # Light shade - 1/4 pixels
+                        if x % 2 == 0 and y % 2 == 0:
+                            s.set_at((x, y), color)
+                    elif char == '▓': # Dark shade - 3/4 pixels
+                        if not (x % 2 == 1 and y % 2 == 1):
+                            s.set_at((x, y), color)
+            return s
             
         # Draw box lines
         dirs = BOX_DRAWING_CHARS.get(char)
@@ -164,8 +188,8 @@ class Renderer:
         else:
             color = color_val
 
-        # Try procedural rendering first for box/block chars
-        if char in BOX_DRAWING_CHARS or char == '█':
+        # Try procedural rendering first for box/block/shade chars
+        if char in BOX_DRAWING_CHARS or char in ('█', '░', '▒', '▓'):
             box_surf = self._render_box_char(char, color, bg_color)
             if box_surf:
                 self.glyph_cache[key] = box_surf
@@ -305,9 +329,60 @@ class Renderer:
                 pygame.draw.rect(self.screen, (200, 200, 200), (c_px, c_py, tile_size, tile_size))
 
         self._draw_tool_preview(session)
+        self._draw_macro_preview(session)
         self._draw_measurement_overlay(session)
         
         self.screen.set_clip(None)
+
+    def _draw_macro_preview(self, session):
+        ts = session.tool_state
+        if ts.mode != 'macro' or not ts.selected_macro:
+            return
+            
+        if ts.selected_macro not in ts.macros:
+            return
+            
+        macro = ts.macros[ts.selected_macro]
+        tiles = macro['tiles']
+        
+        cam_x, cam_y = session.camera_x, session.camera_y
+        tile_size = self.tile_size
+        
+        start_x, start_y = session.cursor_x, session.cursor_y
+        
+        iterations = ts.macro_iterations
+        if ts.macro_until_end:
+            # Heuristic for preview (don't draw 1000 tiles, maybe just 20 or until screen edge)
+            ox, oy = ts.macro_offset
+            if ox == 0 and oy == 0:
+                iterations = 1
+            else:
+                iterations = 20 # Cap preview for performance
+        
+        # Create a semi-transparent surface for the ghosting effect
+        for i in range(iterations):
+            base_x = start_x + i * ts.macro_offset[0]
+            base_y = start_y + i * ts.macro_offset[1]
+            
+            for dx, dy, tid in tiles:
+                map_x, map_y = base_x + dx, base_y + dy
+                
+                # Check visibility
+                if map_x < cam_x or map_y < cam_y or \
+                   map_x >= cam_x + session.view_width or \
+                   map_y >= cam_y + session.view_height:
+                    continue
+                
+                glyph = self.get_glyph(tid)
+                if glyph:
+                    px = (map_x - cam_x) * tile_size
+                    py = (map_y - cam_y) * tile_size
+                    
+                    # Optional: apply some alpha to the preview
+                    # For now just blit
+                    self.screen.blit(glyph, (px, py))
+                    # Draw a faint border to indicate it's a preview
+                    pygame.draw.rect(self.screen, (255, 255, 0), (px, py, tile_size, tile_size), 1)
 
     def _draw_measurement_overlay(self, session):
         if not session.tool_state.measurement_active: return
@@ -375,24 +450,6 @@ class Renderer:
                             d_surf = self.font.render(f"{dist:.1f}", True, (255, 200, 200))
                             self.screen.blit(d_surf, (int(mid_x), int(mid_y)))
                 last_p = p
-
-        # Live Sector Info
-        sec_x = session.cursor_x // grid_size
-        sec_y = session.cursor_y // grid_size
-        rel_x = session.cursor_x % grid_size
-        rel_y = session.cursor_y % grid_size
-        
-        info_lines = [
-            f"SECTOR: {sec_x}, {sec_y}",
-            f"LOCAL:  {rel_x}, {rel_y}",
-            f"TOTAL:  {session.cursor_x}, {session.cursor_y}"
-        ]
-        
-        y_off = self.height - 180
-        for line in info_lines:
-            surf = self.font.render(line, True, color)
-            self.screen.blit(surf, (self.width - surf.get_width() - 10, y_off))
-            y_off += 22
 
     def _draw_tool_preview(self, session):
         ts = session.tool_state

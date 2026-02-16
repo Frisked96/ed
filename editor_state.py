@@ -34,9 +34,9 @@ class EditorState(State):
 
     def _update_viewport(self):
         self.renderer.update_dimensions()
-        # Reserve space for status bar at bottom (100px)
+        # Reserve space for status bar at bottom (150px)
         self.session.viewport_px_w = self.renderer.width
-        self.session.viewport_px_h = self.renderer.height - 100
+        self.session.viewport_px_h = self.renderer.height - 150
         self.session.view_width = self.session.viewport_px_w // self.renderer.tile_size
         self.session.view_height = self.session.viewport_px_h // self.renderer.tile_size
 
@@ -69,7 +69,7 @@ class EditorState(State):
 
         # Status Panel at bottom
         self.status_panel = UIPanel(
-            relative_rect=pygame.Rect(0, h - 100, w, 100),
+            relative_rect=pygame.Rect(0, h - 150, w, 150),
             manager=self.ui_manager
         )
 
@@ -84,10 +84,29 @@ class EditorState(State):
         self.labels['autotile'] = UILabel(pygame.Rect(220, 35, 200, 20), "AUTOTILE: OFF", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
         self.labels['snap'] = UILabel(pygame.Rect(440, 35, 200, 20), "SNAP: OFF", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
 
-        # Row 3: Stats, Help
+        # Row 3: Stats, Help, Macro
         self.labels['map'] = UILabel(pygame.Rect(10, 60, 200, 20), f"MAP: {self.session.map_obj.width}x{self.session.map_obj.height}", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
         self.labels['history'] = UILabel(pygame.Rect(220, 60, 200, 20), "UNDO: 0 / REDO: 0", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
         self.labels['help'] = UILabel(pygame.Rect(440, 60, 300, 20), "[F1] Menu | [?] Help", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+
+        # Macro Dropdown and Controls
+        self.labels['macro_lbl'] = UILabel(pygame.Rect(10, 85, 100, 20), "MACRO:", self.ui_manager, container=self.status_panel)
+        macro_options = list(self.session.tool_state.macros.keys())
+        if not macro_options: macro_options = ["None"]
+        self.macro_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=macro_options,
+            starting_option=self.session.tool_state.selected_macro or macro_options[0],
+            relative_rect=pygame.Rect(110, 85, 150, 30),
+            manager=self.ui_manager,
+            container=self.status_panel
+        )
+        self.macro_play_btn = UIButton(pygame.Rect(270, 85, 80, 30), "PLAY", self.ui_manager, container=self.status_panel)
+        self.macro_rec_btn = UIButton(pygame.Rect(360, 85, 80, 30), "REC", self.ui_manager, container=self.status_panel)
+        self.macro_iter_btn = UIButton(pygame.Rect(450, 85, 80, 30), f"ITER: {self.session.tool_state.macro_iterations}", self.ui_manager, container=self.status_panel)
+
+        # Measurement / Sector Info
+        self.labels['sector'] = UILabel(pygame.Rect(w - 450, 85, 220, 20), "SECTOR: --", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
+        self.labels['local_coord'] = UILabel(pygame.Rect(w - 450, 110, 220, 20), "LOCAL: --", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
 
         # Selected Tile Preview (Right side of status)
         self.labels['tile_preview'] = UILabel(pygame.Rect(w - 220, 5, 200, 55), "TILE: [?]", self.ui_manager, container=self.status_panel, object_id="#unicode_label_large")
@@ -192,6 +211,26 @@ class EditorState(State):
                 self.session.selected_tile_id = tid
                 self._update_ui_labels()
                 return
+            elif event.ui_element == self.macro_play_btn:
+                from actions.macro import handle_macro_play
+                handle_macro_play(self.session, self.manager)
+            elif event.ui_element == self.macro_rec_btn:
+                from actions.macro import handle_macro_toggle
+                handle_macro_toggle(self.session, self.manager)
+                self._rebuild_macro_ui()
+            elif event.ui_element == self.macro_iter_btn:
+                from actions.macro import handle_macro_set_iterations
+                handle_macro_set_iterations(self.session, self.manager)
+
+        if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            if event.ui_element == self.macro_dropdown:
+                if event.text != "None":
+                    self.session.tool_state.selected_macro = event.text
+                    self.session.tool_state.mode = 'macro'
+                else:
+                    self.session.tool_state.selected_macro = None
+                    if self.session.tool_state.mode == 'macro':
+                        self.session.tool_state.mode = 'place'
 
         if event.type == pygame_gui.UI_WINDOW_CLOSE:
             if event.ui_element == self.palette_window:
@@ -255,13 +294,20 @@ class EditorState(State):
                     over_palette = True
 
                 if not over_palette:
-                    self.input_handler.process_mouse(event.button, self.manager)
+                    if self.session.tool_state.mode == 'macro':
+                        from actions.macro import handle_macro_play
+                        handle_macro_play(self.session, self.manager)
+                    else:
+                        self.input_handler.process_mouse(event.button, self.manager)
 
     def update(self, dt):
         if self.session.map_obj is not self.current_map:
+            # Preserve callback if recording
+            cb = self.current_map.on_tile_changed_callback
             self._unregister_map_listener(self.current_map)
             self.current_map = self.session.map_obj
             self._register_map_listener(self.current_map)
+            self.current_map.on_tile_changed_callback = cb
             self.renderer.invalidate_cache()
 
         self.input_handler.check_held_keys()
@@ -311,11 +357,52 @@ class EditorState(State):
         self.labels['map'].set_text(f"MAP: {self.session.map_obj.width}x{self.session.map_obj.height}")
         self.labels['history'].set_text(f"UNDO: {self.session.undo_stack.undo_count} / REDO: {self.session.undo_stack.redo_count}")
 
+        if hasattr(self, 'macro_rec_btn'):
+            self.macro_rec_btn.set_text("STOP" if ts.recording else "REC")
+            self.macro_iter_btn.set_text(f"ITER: {ts.macro_iterations}")
+            # Update dropdown if macro count changed
+            if len(ts.macros) != len(self.macro_dropdown.options_list) - (1 if "None" in self.macro_dropdown.options_list else 0):
+                 self._rebuild_macro_ui()
+            
+            # Sync selection (if it changed externally via context menu)
+            curr_sel = self.macro_dropdown.selected_option
+            target_sel = ts.selected_macro or "None"
+            if curr_sel != target_sel:
+                # We don't want to kill/rebuild every frame, only if mismatch
+                # But UIDropDownMenu is tricky to just 'set'
+                # Rebuilding is safest to ensure visual sync
+                self._rebuild_macro_ui()
+
+        # Update Sector Info
+        if 'sector' in self.labels:
+            grid_size = ts.measurement_config.get('grid_size', 100)
+            sec_x = self.session.cursor_x // grid_size
+            sec_y = self.session.cursor_y // grid_size
+            rel_x = self.session.cursor_x % grid_size
+            rel_y = self.session.cursor_y % grid_size
+            self.labels['sector'].set_text(f"SECTOR: {sec_x}, {sec_y}")
+            self.labels['local_coord'].set_text(f"LOCAL: {rel_x}, {rel_y}")
+
         t = REGISTRY.get(self.session.selected_tile_id)
         if t:
             # Use color if available
             self.labels['tile_preview'].set_text(f"TILE: [{t.char}]")
             self.labels['tile_name'].set_text(t.name)
+
+    def _rebuild_macro_ui(self):
+        macro_options = list(self.session.tool_state.macros.keys())
+        if not macro_options: macro_options = ["None"]
+        current = self.session.tool_state.selected_macro or macro_options[0]
+        
+        # This is a bit hacky but pygame_gui doesn't always like list updates
+        self.macro_dropdown.kill()
+        self.macro_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=macro_options,
+            starting_option=current if current in macro_options else macro_options[0],
+            relative_rect=pygame.Rect(110, 85, 150, 30),
+            manager=self.ui_manager,
+            container=self.status_panel
+        )
             
     def draw(self, surface):
         self.renderer.clear()

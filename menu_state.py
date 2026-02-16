@@ -3,7 +3,7 @@ import pygame_gui
 from pygame_gui.elements import UIButton, UILabel
 from state_engine import State
 from core import EditorSession
-from map_io import load_config
+from map_io import load_config, load_macros
 from editor_state import EditorState
 
 class MainMenuState(State):
@@ -13,7 +13,7 @@ class MainMenuState(State):
         self.ui_elements = []
         # Pre-load config/macros/rules to pass to session
         self.bindings = load_config()
-        self.macros = {} 
+        self.macros = load_macros()
         self.tiling_rules = {}
 
     def enter(self, **kwargs):

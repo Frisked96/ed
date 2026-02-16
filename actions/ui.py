@@ -63,7 +63,13 @@ def handle_open_context_menu(session, manager, action=None):
     from .measure import handle_measurement_configure, handle_measurement_toggle
     from .tiles import handle_tile_management
 
+    from .macro import (
+        handle_macro_toggle, handle_macro_play, handle_macro_select,
+        handle_macro_set_iterations, handle_macro_toggle_until_end, handle_macro_set_offset
+    )
+
     mouse_pos = pygame.mouse.get_pos()
+    ts = session.tool_state
 
     def on_flood_fill():
         handle_flood_fill(session, manager, 'flood_fill')
@@ -99,6 +105,15 @@ def handle_open_context_menu(session, manager, action=None):
             ("Circle Tool", lambda: set_tool('circle')),
             ("Select Tool", lambda: set_tool('select')),
             ("Flood Fill", on_flood_fill),
+            ("---", None),
+            ("Macro: " + ("Stop Recording" if ts.recording else "Start Recording"), lambda: handle_macro_toggle(session, manager)),
+            ("Macro: Select", lambda: handle_macro_select(session, manager)),
+            ("Macro: Play" + (f" ({ts.selected_macro})" if ts.selected_macro else ""), lambda: handle_macro_play(session, manager)),
+            ("Macro: Iterations (" + str(ts.macro_iterations) + ")", lambda: handle_macro_set_iterations(session, manager)),
+            ("Macro: Until End (" + ("ON" if ts.macro_until_end else "OFF") + ")", lambda: handle_macro_toggle_until_end(session, manager)),
+            ("Macro: Offset (Manual)", lambda: handle_macro_set_offset(session, manager)),
+            ("Macro: Offset (Horizontal 1,0)", lambda: setattr(ts, 'macro_offset', (1, 0)) or show_message(manager, "Offset set to Horizontal", notify=True)),
+            ("Macro: Offset (Vertical 0,1)", lambda: setattr(ts, 'macro_offset', (0, 1)) or show_message(manager, "Offset set to Vertical", notify=True)),
             ("---", None),
             ("Toggle Measurement", lambda: handle_measurement_toggle(session, manager)),
             ("Measurement Settings", lambda: handle_measurement_configure(session, manager)),

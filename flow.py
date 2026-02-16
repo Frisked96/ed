@@ -121,3 +121,7 @@ class AppFlow(StateMachine):
     def push_form(self, title, fields, callback):
         from menu import FormState
         self.manager.push(FormState(self.manager, self.renderer, title, fields, callback))
+
+    def push_choice_selector(self, title, choices, callback):
+        from menu.base import ChoiceSelectorState
+        self.manager.push(ChoiceSelectorState(self.manager, self.renderer, title, choices, callback))

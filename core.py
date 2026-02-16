@@ -26,6 +26,7 @@ class Map:
         self.undo_stack = undo_stack
         self.dirty = False
         self.listeners = []
+        self.on_tile_changed_callback = None
         if data is not None:
             if isinstance(data, np.ndarray):
                 self.data = data.copy()
@@ -55,6 +56,8 @@ class Map:
                 self.dirty = True
                 for l in self.listeners:
                     l(x, y)
+                if self.on_tile_changed_callback:
+                    self.on_tile_changed_callback(x, y, tile_id)
                 return True
         return False
     
@@ -110,9 +113,17 @@ class ToolState:
         self.dirty = False
         self.seed = None
         self.pattern = None
+        
+        # Macro State
         self.recording = False
-        self.current_macro_actions = []
+        self.macro_origin = None
+        self.current_macro_tiles = [] # List of (dx, dy, tid)
         self.macros = macros if macros is not None else {}
+        self.selected_macro = None
+        self.macro_iterations = 1
+        self.macro_until_end = False
+        self.macro_offset = (1, 0) # Default offset per iteration
+        
         self.snap_size = 1
         self.measure_start = None
         self.measurement_active = False

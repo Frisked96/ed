@@ -119,3 +119,20 @@ def autosave_map(map_obj, filename):
         return True
     except:
         return False
+
+def save_macros(macros):
+    path = os.path.join(os.getcwd(), 'macros.json')
+    try:
+        with open(path, 'w') as f:
+            json.dump(macros, f, indent=2)
+    except: pass
+
+def load_macros():
+    path = os.path.join(os.getcwd(), 'macros.json')
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except:
+        return {}

@@ -102,10 +102,5 @@ class InputHandler:
 
     def dispatch(self, action, manager):
         if action in self.dispatcher:
-            # Record action if recording is active, but don't record the toggle itself
-            ts = self.session.tool_state
-            if ts.recording and action != 'macro_record_toggle':
-                ts.current_macro_actions.append(action)
-
             # Actions now expect (session, manager, action)
             self.dispatcher[action](self.session, manager, action)

@@ -413,6 +413,66 @@ class FormState(State):
     def draw(self, surface):
         pass
 
+class ChoiceSelectorState(State):
+    def __init__(self, manager, context, title, choices, callback):
+        super().__init__(manager)
+        self.context = context
+        self.title = title
+        self.choices = choices
+        self.callback = callback
+        self.window = None
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        menu_w = 300
+        menu_h = min(400, len(self.choices) * 35 + 80)
+        
+        self.window = UIWindow(
+            rect=pygame.Rect((w - menu_w) // 2, (h - menu_h) // 2, menu_w, menu_h),
+            manager=self.ui_manager,
+            window_display_title=self.title
+        )
+        
+        self.selection_list = UISelectionList(
+            relative_rect=pygame.Rect(10, 10, menu_w - 50, menu_h - 100),
+            item_list=self.choices,
+            manager=self.ui_manager,
+            container=self.window
+        )
+        
+        self.cancel_btn = UIButton(
+            relative_rect=pygame.Rect(10, menu_h - 80, menu_w - 50, 30),
+            text="Cancel",
+            manager=self.ui_manager,
+            container=self.window
+        )
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.selection_list:
+                item = self.selection_list.get_single_selection()
+                self.manager.pop()
+                self.callback(item)
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.cancel_btn:
+                self.manager.pop()
+                self.callback(None)
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+                self.callback(None)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
+                self.callback(None)
+
+    def draw(self, surface):
+        pass
+
 class ContextMenuState(State):
     def __init__(self, manager, context, options, screen_pos):
         super().__init__(manager)

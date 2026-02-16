@@ -1,6 +1,9 @@
-from collections import Counter
 import pygame
+import pygame_gui
+from pygame_gui.elements import UIWindow, UISelectionList, UILabel, UITextEntryLine, UIButton, UITextBox, UIPanel
+from pygame_gui.windows import UIConfirmationDialog, UIMessageWindow
 from state_engine import State
+from collections import Counter
 from utils import get_key_name
 
 def build_key_map(bindings):
@@ -30,73 +33,81 @@ def build_key_map(bindings):
 def get_map_statistics(map_obj):
     return Counter(map_obj.data.flatten())
 
-def _render_menu_generic(context, title, lines, selected_idx=-1):
-    screen = context.screen
-    font = context.font
-    tile_size = context.tile_size
-
-    # Calculate required dimensions
-    max_w = max([font.size(line)[0] for line in lines] + [font.size(title)[0]]) + 40
-    total_h = (len(lines) + 2) * (tile_size + 6) + 40
-    
-    # Center the box
-    bx = (context.width - max_w) // 2
-    by = (context.height - total_h) // 2
-    
-    # Draw semi-transparent panel
-    overlay = pygame.Surface((max_w, total_h), pygame.SRCALPHA)
-    overlay.fill((30, 30, 30, 230)) # Dark gray with alpha
-    screen.blit(overlay, (bx, by))
-    pygame.draw.rect(screen, (200, 200, 200), (bx, by, max_w, total_h), 2) # Border
-
-    # Title
-    title_surf = font.render(title, True, (0, 255, 255))
-    screen.blit(title_surf, (bx + 20, by + 15))
-
-    y = by + tile_size + 30
-    for i, line in enumerate(lines):
-        color = (255, 255, 255)
-        bg_color = None
-
-        if i == selected_idx:
-            color = (0, 0, 0)
-            bg_color = (200, 200, 200)
-            pygame.draw.rect(screen, bg_color, (bx + 5, y - 2, max_w - 10, tile_size + 4))
-
-        surf = font.render(line, True, color)
-        screen.blit(surf, (bx + 20, y))
-        y += tile_size + 6
-
-    def draw(self, surface):
-        lines = [opt[0] for opt in self.options]
-        _render_menu_generic(self.context, self.title, lines, self.selected_idx)
+# Remove _render_menu_generic as we are using pygame_gui
 
 class MenuState(State):
     def __init__(self, manager, context, title, options):
         """
-        options: list of (label, callback) tuples
+        options: list of (label, callback) tuples.
+        If callback is None, it's just a label or disabled item (though UISelectionList doesn't support disabled items well, we can ignore selection).
         """
         super().__init__(manager)
         self.context = context
         self.title = title
         self.options = options
-        self.selected_idx = 0
+        self.option_labels = [opt[0] for opt in options]
+        self.window = None
+        self.selection_list = None
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+
+        # Calculate size based on content
+        # Default size, maybe adjust based on option length
+        menu_w = 400
+        menu_h = min(h - 100, len(self.options) * 30 + 70)
+
+        rect = pygame.Rect((w - menu_w) // 2, (h - menu_h) // 2, menu_w, menu_h)
+
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title=self.title,
+            object_id='#menu_window'
+        )
+
+        self.selection_list = UISelectionList(
+            relative_rect=pygame.Rect(10, 10, menu_w - 50, menu_h - 60),
+            item_list=self.option_labels,
+            manager=self.ui_manager,
+            container=self.window,
+            object_id='#menu_list'
+        )
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
+            self.window = None
 
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                self.selected_idx = (self.selected_idx - 1) % len(self.options)
-            elif event.key == pygame.K_DOWN:
-                self.selected_idx = (self.selected_idx + 1) % len(self.options)
-            elif event.key == pygame.K_RETURN:
-                callback = self.options[self.selected_idx][1]
-                if callback: callback()
-            elif event.key == pygame.K_ESCAPE:
+        if event.type == pygame_gui.UI_SELECTION_LIST_DOUBLE_CLICKED_SELECTION:
+            if event.ui_element == self.selection_list:
+                self._confirm_selection()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
                 self.manager.pop()
+            elif event.key == pygame.K_RETURN:
+                self._confirm_selection()
+
+    def _confirm_selection(self):
+        selected_item = self.selection_list.get_single_selection()
+        if selected_item:
+            # Find the index
+            try:
+                idx = self.option_labels.index(selected_item)
+                callback = self.options[idx][1]
+                if callback:
+                    callback()
+                # Note: We don't automatically pop here unless the callback does it,
+                # but typically menu items trigger a new state or action.
+                # If it's a "leaf" action, the callback should handle popping or not.
+                # Many existing callbacks expect to pop themselves or push a new state.
+            except ValueError:
+                pass
 
     def draw(self, surface):
-        lines = [opt[0] for opt in self.options]
-        _render_menu_generic(self.context, self.title, lines, self.selected_idx)
+        # pygame_gui handles drawing
+        pass
 
 class TextInputState(State):
     def __init__(self, manager, context, prompt, callback, initial_text=""):
@@ -104,38 +115,67 @@ class TextInputState(State):
         self.context = context
         self.prompt = prompt
         self.callback = callback
-        self.input_text = str(initial_text)
+        self.initial_text = str(initial_text)
+        self.window = None
+        self.text_entry = None
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        box_w, box_h = 400, 150
+        rect = pygame.Rect((w - box_w) // 2, (h - box_h) // 2, box_w, box_h)
+
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title=self.prompt,
+            object_id='#input_window'
+        )
         
+        self.text_entry = UITextEntryLine(
+            relative_rect=pygame.Rect(20, 40, box_w - 70, 30),
+            manager=self.ui_manager,
+            container=self.window,
+            initial_text=self.initial_text
+        )
+        self.text_entry.focus()
+
+        btn_w = 100
+        self.ok_btn = UIButton(
+            relative_rect=pygame.Rect((box_w - 70)//2 - btn_w - 10, 90, btn_w, 30),
+            text="OK",
+            manager=self.ui_manager,
+            container=self.window
+        )
+        self.cancel_btn = UIButton(
+            relative_rect=pygame.Rect((box_w - 70)//2 + 10, 90, btn_w, 30),
+            text="Cancel",
+            manager=self.ui_manager,
+            container=self.window
+        )
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
+
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:
+        if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+            if event.ui_element == self.text_entry:
                 self.manager.pop()
-                self.callback(self.input_text)
-            elif event.key == pygame.K_ESCAPE:
+                self.callback(event.text)
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.ok_btn:
+                self.manager.pop()
+                self.callback(self.text_entry.get_text())
+            elif event.ui_element == self.cancel_btn:
                 self.manager.pop()
                 self.callback(None)
-            elif event.key == pygame.K_BACKSPACE:
-                self.input_text = self.input_text[:-1]
-            else:
-                if event.unicode and event.unicode.isprintable():
-                    self.input_text += event.unicode
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
+                self.callback(None)
 
     def draw(self, surface):
-        box_w = 500
-        box_h = 100
-        bx = (self.context.width - box_w) // 2
-        by = (self.context.height - box_h) // 2
-
-        s = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-        s.fill((30, 30, 30, 240))
-        surface.blit(s, (bx, by))
-        pygame.draw.rect(surface, (0, 255, 255), (bx, by, box_w, box_h), 2)
-
-        prompt_surf = self.context.font.render(self.prompt, True, (0, 255, 255))
-        surface.blit(prompt_surf, (bx + 20, by + 15))
-        
-        input_surf = self.context.font.render(self.input_text + "_", True, (255, 255, 255))
-        surface.blit(input_surf, (bx + 20, by + 50))
+        pass
 
 class ConfirmationState(State):
     def __init__(self, manager, context, prompt, callback):
@@ -143,79 +183,36 @@ class ConfirmationState(State):
         self.context = context
         self.prompt = prompt
         self.callback = callback
+        self.dialog = None
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        rect = pygame.Rect((w - 400) // 2, (h - 200) // 2, 400, 200)
         
-        # Determine dimensions
-        font = self.context.font
-        prompt_w = font.size(self.prompt)[0]
-        self.box_w = max(400, prompt_w + 60)
-        self.box_h = 100
-        self.bx = (self.context.width - self.box_w) // 2
-        self.by = (self.context.height - self.box_h) // 2
-        
-        # Button rects (relative to box)
-        self.yes_rect = pygame.Rect(self.bx + self.box_w//2 - 110, self.by + 50, 80, 30)
-        self.no_rect = pygame.Rect(self.bx + self.box_w//2 + 30, self.by + 50, 80, 30)
-        self.hover_btn = None
+        self.dialog = UIConfirmationDialog(
+            rect=rect,
+            manager=self.ui_manager,
+            action_long_desc=self.prompt,
+            window_title="Confirm",
+            blocking=True
+        )
+
+    def exit(self):
+        if self.dialog:
+            self.dialog.kill()
 
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_y:
+        if event.type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+            if event.ui_element == self.dialog:
                 self.manager.pop()
                 self.callback(True)
-            elif event.key in [pygame.K_n, pygame.K_ESCAPE, pygame.K_RETURN]:
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.dialog:
                 self.manager.pop()
                 self.callback(False)
-        elif event.type == pygame.MOUSEMOTION:
-            mx, my = event.pos
-            if self.yes_rect.collidepoint(mx, my):
-                self.hover_btn = 'yes'
-            elif self.no_rect.collidepoint(mx, my):
-                self.hover_btn = 'no'
-            else:
-                self.hover_btn = None
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                mx, my = event.pos
-                if self.yes_rect.collidepoint(mx, my):
-                    self.manager.pop()
-                    self.callback(True)
-                elif self.no_rect.collidepoint(mx, my):
-                    self.manager.pop()
-                    self.callback(False)
 
     def draw(self, surface):
-        # Determine dimensions and position (recalculate for resize)
-        font = self.context.font
-        prompt_w = font.size(self.prompt)[0]
-        self.box_w = max(400, prompt_w + 60)
-        self.box_h = 100
-        self.bx = (self.context.width - self.box_w) // 2
-        self.by = (self.context.height - self.box_h) // 2
-        
-        # Update button rects
-        self.yes_rect = pygame.Rect(self.bx + self.box_w//2 - 110, self.by + 50, 80, 30)
-        self.no_rect = pygame.Rect(self.bx + self.box_w//2 + 30, self.by + 50, 80, 30)
-
-        s = pygame.Surface((self.box_w, self.box_h), pygame.SRCALPHA)
-        s.fill((30, 30, 30, 240))
-        surface.blit(s, (self.bx, self.by))
-        pygame.draw.rect(surface, (255, 200, 0), (self.bx, self.by, self.box_w, self.box_h), 2)
-
-        text_surf = font.render(self.prompt, True, (255, 255, 255))
-        surface.blit(text_surf, (self.bx + (self.box_w - text_surf.get_width()) // 2, self.by + 15))
-
-        # Draw Buttons
-        yes_color = (100, 255, 100) if self.hover_btn == 'yes' else (60, 180, 60)
-        no_color = (255, 100, 100) if self.hover_btn == 'no' else (180, 60, 60)
-        
-        pygame.draw.rect(surface, yes_color, self.yes_rect)
-        pygame.draw.rect(surface, no_color, self.no_rect)
-        
-        yes_txt = font.render("YES", True, (0,0,0))
-        no_txt = font.render("NO", True, (0,0,0))
-        
-        surface.blit(yes_txt, (self.yes_rect.centerx - yes_txt.get_width()//2, self.yes_rect.centery - yes_txt.get_height()//2))
-        surface.blit(no_txt, (self.no_rect.centerx - no_txt.get_width()//2, self.no_rect.centery - no_txt.get_height()//2))
+        pass
 
 class MessageState(State):
     def __init__(self, manager, context, text, callback=None):
@@ -223,236 +220,188 @@ class MessageState(State):
         self.context = context
         self.text = text
         self.callback = callback
+        self.window = None
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        rect = pygame.Rect((w - 400) // 2, (h - 200) // 2, 400, 200)
+
+        self.window = UIMessageWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            html_message=self.text,
+            window_title="Message"
+        )
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
 
     def handle_event(self, event):
-        if event.type in [pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN]:
-            self.manager.pop()
-            if self.callback:
-                self.callback()
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+                if self.callback:
+                    self.callback()
 
     def draw(self, surface):
-        text_surf = self.context.font.render(self.text, True, (255, 255, 255))
-        rect = text_surf.get_rect(center=(self.context.width // 2, self.context.height // 2))
-        bg_rect = rect.inflate(40, 40)
-
-        pygame.draw.rect(surface, (0, 0, 0), bg_rect)
-        pygame.draw.rect(surface, (255, 255, 255), bg_rect, 2)
-        surface.blit(text_surf, rect)
+        pass
 
 class HelpState(State):
     def __init__(self, manager, context, bindings):
         super().__init__(manager)
         self.context = context
         self.bindings = bindings
-        self.scroll = 0
-        self.all_lines = self._generate_help()
+        self.window = None
 
-    def _generate_help(self):
-        try:
-            b = self.bindings
-            help_sections = [
-                ("MOVEMENT", [
-                    f"View: {get_key_name(b.get('move_view_up'))}/{get_key_name(b.get('move_view_down'))}/{get_key_name(b.get('move_view_left'))}/{get_key_name(b.get('move_view_right'))}",
-                    f"Cursor: Arrow Keys"
-                ]),
-                ("DRAWING TOOLS", [
-                    f"{get_key_name(b.get('place_tile'))}=Place tile | {get_key_name(b.get('cycle_tile'))}=Cycle tiles | {get_key_name(b.get('pick_tile'))}=Pick tile",
-                    f"{get_key_name(b.get('flood_fill'))}=Flood fill | {get_key_name(b.get('line_tool'))}=Line | {get_key_name(b.get('rect_tool'))}=Rectangle",
-                    f"{get_key_name(b.get('circle_tool'))}=Circle | {get_key_name(b.get('pattern_tool'))}=Pattern mode | {get_key_name(b.get('define_pattern'))}=Def Pattern",
-                    f"Brush: {get_key_name(b.get('decrease_brush'))}/{get_key_name(b.get('increase_brush'))} (Size) | {get_key_name(b.get('define_brush'))}=Define shape",
-                    f"{get_key_name(b.get('define_tiles'))}=Define Custom Tiles"
-                ]),
-                ("SELECTION & CLIPBOARD", [
-                    f"{get_key_name(b.get('select_start'))}=Start/End selection | {get_key_name(b.get('clear_selection'))}=Clear",
-                    f"{get_key_name(b.get('copy_selection'))}=Copy | {get_key_name(b.get('paste_selection'))}=Paste",
-                    f"{get_key_name(b.get('rotate_selection'))}=Rotate Sel | {get_key_name(b.get('flip_h'))}=Flip H Sel | {get_key_name(b.get('flip_v'))}=Flip V Sel",
-                    f"{get_key_name(b.get('clear_area'))}=Clear selected area"
-                ]),
-                ("EDIT OPERATIONS", [
-                    f"{get_key_name(b.get('undo'))}=Undo | {get_key_name(b.get('redo'))}=Redo",
-                    f"{get_key_name(b.get('replace_all'))}=Replace all tiles | {get_key_name(b.get('statistics'))}=Show statistics"
-                ]),
-                ("MAP TRANSFORMATIONS", [
-                    f"{get_key_name(b.get('map_rotate'))}=Rotate map 90° | {get_key_name(b.get('map_flip_h'))}=Flip H | {get_key_name(b.get('map_flip_v'))}=Flip V"
-                ]),
-                ("PROCEDURAL GENERATION", [
-                    f"{get_key_name(b.get('random_gen'))}=Cellular Cave | {get_key_name(b.get('perlin_noise'))}=Perlin Noise",
-                    f"{get_key_name(b.get('voronoi'))}=Voronoi regions | {get_key_name(b.get('set_seed'))}=Set random seed"
-                ]),
-                ("FILE OPERATIONS", [
-                    f"{get_key_name(b.get('new_map'))}=New map | {get_key_name(b.get('load_map'))}=Load | {get_key_name(b.get('save_map'))}=Save",
-                    f"{get_key_name(b.get('resize_map'))}=Resize map | {get_key_name(b.get('export_image'))}=Export PNG/CSV"
-                ]),
-                ("MACROS & AUTOMATION", [
-                    f"{get_key_name(b.get('macro_record_toggle'))}=Toggle Macro Record | {get_key_name(b.get('macro_play'))}=Play Macro",
-                    f"{get_key_name(b.get('toggle_autotile'))}=Toggle Auto-Tiling"
-                ]),
-                ("SYSTEM", [
-                    f"{get_key_name(b.get('toggle_snap'))}=Set Snap | {get_key_name(b.get('set_measure'))}=Measure Dist",
-                    f"{get_key_name(b.get('editor_menu'))}=Pause Menu (F1) | {get_key_name(b.get('quit'))}=Quit Editor",
-                    f"{get_key_name(b.get('show_help'))}=Toggle Help (?) | {get_key_name(b.get('toggle_palette'))}=Toggle Palette",
-                    f"{get_key_name(b.get('edit_controls'))}=Edit Controls"
-                ])
-            ]
-            all_lines = ["=== HELP (ESC to close) ==="]
-            for section, lines in help_sections:
-                all_lines.append(f"--- {section} ---")
-                all_lines.extend(lines)
-                all_lines.append("")
-            return all_lines
-        except Exception as e:
-            print(f"ERROR in _generate_help: {e}")
-            return ["Error generating help", str(e), "Check console for details"]
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        rect = pygame.Rect(50, 50, w - 100, h - 100)
+
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title="Help (Press ESC to close)",
+            resizable=True
+        )
+
+        text = self._generate_help_html()
+        UITextBox(
+            relative_rect=pygame.Rect(0, 0, rect.width - 30, rect.height - 60),
+            html_text=text,
+            manager=self.ui_manager,
+            container=self.window,
+            anchors={'top': 'top', 'bottom': 'bottom', 'left': 'left', 'right': 'right'}
+        )
+
+    def _generate_help_html(self):
+        b = self.bindings
+        sections = [
+            ("MOVEMENT", [
+                f"View: {get_key_name(b.get('move_view_up'))}/{get_key_name(b.get('move_view_down'))}/{get_key_name(b.get('move_view_left'))}/{get_key_name(b.get('move_view_right'))}",
+                f"Cursor: Arrow Keys"
+            ]),
+            ("DRAWING TOOLS", [
+                f"<b>{get_key_name(b.get('place_tile'))}</b>: Place tile | <b>{get_key_name(b.get('cycle_tile'))}</b>: Cycle tiles | <b>{get_key_name(b.get('pick_tile'))}</b>: Pick tile",
+                f"<b>{get_key_name(b.get('flood_fill'))}</b>: Flood fill | <b>{get_key_name(b.get('line_tool'))}</b>: Line | <b>{get_key_name(b.get('rect_tool'))}</b>: Rectangle",
+                f"<b>{get_key_name(b.get('circle_tool'))}</b>: Circle | <b>{get_key_name(b.get('pattern_tool'))}</b>: Pattern mode",
+                f"Brush: <b>{get_key_name(b.get('decrease_brush'))}/{get_key_name(b.get('increase_brush'))}</b> (Size)"
+            ]),
+             ("SELECTION & CLIPBOARD", [
+                f"<b>{get_key_name(b.get('select_start'))}</b>: Start/End selection | <b>{get_key_name(b.get('clear_selection'))}</b>: Clear",
+                f"<b>{get_key_name(b.get('copy_selection'))}</b>: Copy | <b>{get_key_name(b.get('paste_selection'))}</b>: Paste",
+                f"<b>{get_key_name(b.get('rotate_selection'))}</b>: Rotate Sel | <b>{get_key_name(b.get('flip_h'))}</b>: Flip H Sel | <b>{get_key_name(b.get('flip_v'))}</b>: Flip V Sel",
+                f"<b>{get_key_name(b.get('clear_area'))}</b>: Clear selected area"
+            ]),
+             ("EDIT OPERATIONS", [
+                f"<b>{get_key_name(b.get('undo'))}</b>: Undo | <b>{get_key_name(b.get('redo'))}</b>: Redo",
+                f"<b>{get_key_name(b.get('replace_all'))}</b>: Replace all tiles | <b>{get_key_name(b.get('statistics'))}</b>: Show statistics"
+            ]),
+        ]
+
+        html = "<font face='fira_code' size=4>"
+        for title, lines in sections:
+            html += f"<br><b><font color='#00FFFF'>{title}</font></b><br>"
+            for line in lines:
+                html += line + "<br>"
+        html += "</font>"
+        return html
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key in [pygame.K_ESCAPE, pygame.K_q]:
+            if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                 self.manager.pop()
-            elif event.key == pygame.K_UP:
-                self.scroll = max(0, self.scroll - 1)
-            elif event.key == pygame.K_DOWN:
-                self.scroll = min(len(self.all_lines) - 5, self.scroll + 1)
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
 
     def draw(self, surface):
-        overlay_w, overlay_h = self.context.width - 100, self.context.height - 100
-        ox, oy = 50, 50
-        
-        # Proper transparency
-        temp_surface = pygame.Surface((overlay_w, overlay_h), pygame.SRCALPHA)
-        temp_surface.fill((20, 20, 30, 230))
-        surface.blit(temp_surface, (ox, oy))
-        
-        pygame.draw.rect(surface, (0, 255, 255), (ox, oy, overlay_w, overlay_h), 2)
-
-        line_h = 24
-        max_lines = (overlay_h - 40) // line_h
-        for i in range(max_lines):
-            idx = self.scroll + i
-            if idx < len(self.all_lines):
-                line_text = self.all_lines[idx]
-                color = (255, 255, 255)
-                if line_text.startswith("---"): color = (255, 255, 0)
-                if line_text.startswith("==="): color = (0, 255, 255)
-                
-                surf = self.context.font.render(line_text, True, color)
-                surface.blit(surf, (ox + 20, oy + 20 + i * line_h))
+        pass
 
 class FormState(State):
     def __init__(self, manager, context, title, fields, callback):
         super().__init__(manager)
         self.context = context
         self.title = title
-        self.fields = fields # [[label, value, key], ...]
+        self.fields_data = fields # [[label, value, key], ...]
         self.callback = callback
-        self.selected = 0
-        self.options = fields + [["", "", "spacer"], ["Apply", "", "apply"], ["Cancel", "", "cancel"]]
-        self.is_editing = False
-        self.editing_text = ""
+        self.window = None
+        self.entry_map = {}
+
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        
+        # Calculate height
+        form_h = len(self.fields_data) * 40 + 100
+        form_w = 400
+        rect = pygame.Rect((w - form_w) // 2, (h - form_h) // 2, form_w, form_h)
+        
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title=self.title
+        )
+        
+        y = 20
+        for label, val, key in self.fields_data:
+            UILabel(
+                relative_rect=pygame.Rect(20, y, 150, 30),
+                text=label + ":",
+                manager=self.ui_manager,
+                container=self.window
+            )
+
+            entry = UITextEntryLine(
+                relative_rect=pygame.Rect(180, y, 180, 30),
+                manager=self.ui_manager,
+                container=self.window,
+                initial_text=str(val)
+            )
+            self.entry_map[key] = entry
+            y += 40
+
+        self.apply_btn = UIButton(
+            relative_rect=pygame.Rect(80, y + 10, 100, 30),
+            text="Apply",
+            manager=self.ui_manager,
+            container=self.window
+        )
+        
+        self.cancel_btn = UIButton(
+            relative_rect=pygame.Rect(220, y + 10, 100, 30),
+            text="Cancel",
+            manager=self.ui_manager,
+            container=self.window
+        )
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
 
     def handle_event(self, event):
-        if self.is_editing:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    self.options[self.selected][1] = self.editing_text
-                    if self.selected < len(self.fields):
-                        self.fields[self.selected][1] = self.editing_text
-                    self.is_editing = False
-                    pygame.key.stop_text_input()
-                    return
-                elif event.key == pygame.K_ESCAPE:
-                    self.is_editing = False
-                    pygame.key.stop_text_input()
-                    self.manager.pop()
-                    self.callback(None)
-                    return
-                elif event.key == pygame.K_BACKSPACE:
-                    self.editing_text = self.editing_text[:-1]
-                    return
-            elif event.type == pygame.TEXTINPUT:
-                self.editing_text += event.text
-                return
-            return
-
-        if event.type != pygame.KEYDOWN: return
-        
-        num_fields = len(self.fields)
-        options_count = len(self.options)
-        
-        if event.key == pygame.K_UP:
-            self.selected = (self.selected - 1) % options_count
-            if self.options[self.selected][2] == "spacer":
-                self.selected = (self.selected - 1) % options_count
-        elif event.key == pygame.K_DOWN:
-            self.selected = (self.selected + 1) % options_count
-            if self.options[self.selected][2] == "spacer":
-                self.selected = (self.selected + 1) % options_count
-        elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
-            self.manager.pop()
-            self.callback(None)
-        elif event.key == pygame.K_RETURN:
-            key = self.options[self.selected][2]
-            if key == "apply":
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.apply_btn:
+                res = {k: entry.get_text() for k, entry in self.entry_map.items()}
                 self.manager.pop()
-                self.callback({f[2]: f[1] for f in self.fields})
-            elif key == "cancel":
+                self.callback(res)
+            elif event.ui_element == self.cancel_btn:
                 self.manager.pop()
                 self.callback(None)
-            elif key == "spacer":
-                pass
-            elif key == "color":
-                from menu.pickers import ColorPickerState
-                def set_color(val):
-                    if val: self.options[self.selected][1] = val
-                self.manager.push(ColorPickerState(self.manager, self.context, set_color))
-            else:
-                self.is_editing = True
-                self.editing_text = str(self.options[self.selected][1])
-                pygame.key.start_text_input()
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+                self.callback(None)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
+                self.callback(None)
 
     def draw(self, surface):
-        # Dynamic width calculation
-        text_lines = []
-        for i, (label, val, key) in enumerate(self.options):
-            if key in ["apply", "cancel", "spacer"]: continue
-            display_val = self.editing_text if (self.is_editing and i == self.selected) else val
-            text_lines.append(f"{label}: {display_val}")
-        
-        max_w = max([self.context.font.size(line)[0] for line in text_lines] + 
-                    [self.context.font.size(self.title)[0], 200]) + 80
-        
-        total_h = (len(self.options)) * (self.context.tile_size + 10) + 60
-        bx = (self.context.width - max_w) // 2
-        by = (self.context.height - total_h) // 2
-
-        s = pygame.Surface((max_w, total_h), pygame.SRCALPHA)
-        s.fill((50, 50, 70, 250))
-        surface.blit(s, (bx, by))
-        pygame.draw.rect(surface, (0, 255, 255), (bx, by, max_w, total_h), 3)
-
-        title_surf = self.context.font.render(self.title, True, (255, 255, 0))
-        surface.blit(title_surf, (bx + 20, by + 15))
-
-        y = by + 60
-        for i, (label, val, key) in enumerate(self.options):
-            color = (255, 255, 255)
-            if i == self.selected:
-                bg_color = (100, 100, 150) if self.is_editing else (255, 255, 255)
-                pygame.draw.rect(surface, bg_color, (bx + 10, y - 5, max_w - 20, self.context.tile_size + 10))
-                color = (255, 255, 255) if self.is_editing else (0, 0, 0)
-            
-            if key == "apply": 
-                surf = self.context.font.render("[ SAVE CHANGES ]", True, color)
-                surface.blit(surf, (bx + (max_w - surf.get_width())//2, y))
-            elif key == "cancel":
-                surf = self.context.font.render("[ CANCEL ]", True, color)
-                surface.blit(surf, (bx + (max_w - surf.get_width())//2, y))
-            elif key != "spacer":
-                display_val = val
-                if i == self.selected and self.is_editing:
-                    display_val = self.editing_text + "_"
-                surf = self.context.font.render(f"{label}: {display_val}", True, color)
-                surface.blit(surf, (bx + 20, y))
-            y += self.context.tile_size + 10
+        pass
 
 class ContextMenuState(State):
     def __init__(self, manager, context, options, screen_pos):
@@ -460,121 +409,54 @@ class ContextMenuState(State):
         self.context = context
         self.options = options
         self.screen_pos = screen_pos
-        self.selected_idx = -1
-        
-        font = context.font
-        
-        # Layout calculation
-        self.item_height = 30
-        self.max_rows = 12 # Max items per column before splitting
-        
-        count = len(options)
-        if count > self.max_rows:
-            self.cols = 2
-            self.rows = (count + 1) // 2
-        else:
-            self.cols = 1
-            self.rows = count
+        self.option_labels = [opt[0] for opt in options]
+        self.window = None
+        self.selection_list = None
 
-        # Calculate width per column
-        self.col_widths = []
-        for c in range(self.cols):
-            # Items for this column
-            start = c * self.rows
-            end = min(start + self.rows, count)
-            col_items = options[start:end]
-            
-            w = 0
-            for label, _ in col_items:
-                tw = font.size(label)[0]
-                if tw > w: w = tw
-            self.col_widths.append(w + 40) # Padding
-            
-        self.width = sum(self.col_widths)
-        self.height = self.rows * self.item_height + 10
+    def enter(self, **kwargs):
+        x, y = self.screen_pos
+        w, h = 200, min(300, len(self.options) * 30 + 20)
+        
+        # Adjust if off-screen
+        sw, sh = self.manager.screen.get_size()
+        if x + w > sw: x = sw - w
+        if y + h > sh: y = sh - h
+        
+        self.window = UIPanel(
+            relative_rect=pygame.Rect(x, y, w, h),
+            manager=self.ui_manager,
+            layer_thickness=2
+        )
+        
+        self.selection_list = UISelectionList(
+            relative_rect=pygame.Rect(0, 0, w, h),
+            item_list=self.option_labels,
+            manager=self.ui_manager,
+            container=self.window
+        )
 
-        x, y = screen_pos
-        # Adjust position if off-screen
-        if x + self.width > context.width: x = max(0, context.width - self.width)
-        if y + self.height > context.height: y = max(0, context.height - self.height)
-        self.rect = pygame.Rect(x, y, self.width, self.height)
-
-    def get_index_at(self, pos):
-        mx, my = pos
-        if not self.rect.collidepoint(mx, my): return -1
-        
-        rel_x = mx - self.rect.x
-        rel_y = my - self.rect.y - 5
-        
-        if rel_y < 0 or rel_y >= self.rows * self.item_height: return -1
-        
-        row = rel_y // self.item_height
-        
-        current_x = 0
-        col = -1
-        for i, w in enumerate(self.col_widths):
-            if rel_x >= current_x and rel_x < current_x + w:
-                col = i
-                break
-            current_x += w
-            
-        if col == -1: return -1
-        
-        idx = col * self.rows + row
-        if idx < len(self.options):
-            return idx
-        return -1
+    def exit(self):
+        if self.window:
+            self.window.kill()
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEMOTION:
-            self.selected_idx = self.get_index_at(event.pos)
+        if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.selection_list:
+                item = self.selection_list.get_single_selection()
+                try:
+                    idx = self.option_labels.index(item)
+                    cb = self.options[idx][1]
+                    self.manager.pop()
+                    if cb: cb()
+                except ValueError:
+                    self.manager.pop()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            idx = self.get_index_at(event.pos)
-            if idx != -1:
-                cb = self.options[idx][1]
-                self.manager.pop()
-                if cb: cb()
-            else:
+            # Click outside closes menu
+            if not self.window.rect.collidepoint(event.pos):
                 self.manager.pop()
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE: self.manager.pop()
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
 
     def draw(self, surface):
-        shadow = self.rect.copy()
-        shadow.move_ip(4, 4)
-        s = pygame.Surface((shadow.width, shadow.height), pygame.SRCALPHA)
-        s.fill((0, 0, 0, 100))
-        surface.blit(s, shadow)
-
-        pygame.draw.rect(surface, (40, 40, 40), self.rect)
-        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)
-        
-        # Draw Separator if 2 cols
-        current_x = self.rect.x
-        for i in range(self.cols - 1):
-             current_x += self.col_widths[i]
-             pygame.draw.line(surface, (100, 100, 100), (current_x, self.rect.y + 5), (current_x, self.rect.y + self.height - 5))
-
-        font = self.context.font
-        current_x = self.rect.x
-        
-        for c in range(self.cols):
-            start = c * self.rows
-            end = min(start + self.rows, len(self.options))
-            
-            for r in range(end - start):
-                idx = start + r
-                label, _ = self.options[idx]
-                
-                # Item Rect
-                item_rect = pygame.Rect(current_x, self.rect.y + 5 + r * self.item_height, self.col_widths[c], self.item_height)
-                
-                color = (200, 200, 200)
-                if idx == self.selected_idx:
-                    pygame.draw.rect(surface, (60, 60, 80), item_rect)
-                    color = (255, 255, 255)
-                
-                surf = font.render(label, True, color)
-                surface.blit(surf, (item_rect.x + 20, item_rect.y + (self.item_height - surf.get_height()) // 2))
-            
-            current_x += self.col_widths[c]
+        pass

@@ -6,6 +6,8 @@ from generation import (
 from menu.base import FormState, MessageState, State, MenuState
 from menu.pickers import TilePickerState, MultiTilePickerState
 import pygame
+import pygame_gui
+from pygame_gui.elements import UIWindow, UIScrollingContainer, UILabel, UIButton
 from core import EditorSession
 
 # --- Simple Menu Helpers (unchanged) ---
@@ -115,8 +117,9 @@ class BaseGenConfigState(State):
         self.session = session
         self.title = title
         self.options = [] # list of (label, getter, action/setter)
-        self.selected_idx = 0
-        
+        self.window = None
+        self.ui_elements = [] # list of (getter, ui_element) to update
+
     def _get_tile_label(self, tid):
         t = REGISTRY.get(tid)
         return f"{t.char} ({tid})" if t else f"Void ({tid})"
@@ -131,41 +134,74 @@ class BaseGenConfigState(State):
             return (sx, ex + 1), (sy, ey + 1)
         return (0, map_w), (0, map_h)
 
-    def handle_event(self, event):
-        if event.type != pygame.KEYDOWN: return
+    def enter(self, **kwargs):
+        w, h = self.manager.screen.get_size()
+        win_w, win_h = 600, 500
+        rect = pygame.Rect((w - win_w) // 2, (h - win_h) // 2, win_w, win_h)
         
-        if event.key == pygame.K_UP:
-            self.selected_idx = (self.selected_idx - 1) % len(self.options)
-        elif event.key == pygame.K_DOWN:
-            self.selected_idx = (self.selected_idx + 1) % len(self.options)
-        elif event.key == pygame.K_ESCAPE:
-            self.manager.pop()
-        elif event.key == pygame.K_RETURN or event.key == pygame.K_RIGHT:
-            _, _, action = self.options[self.selected_idx]
-            if action: action()
-        elif event.key == pygame.K_LEFT:
-             # Maybe decrease value?
-             pass
+        self.window = UIWindow(
+            rect=rect,
+            manager=self.ui_manager,
+            window_display_title=self.title
+        )
+
+        container = UIScrollingContainer(
+            relative_rect=pygame.Rect(0, 0, win_w - 30, win_h - 40),
+            manager=self.ui_manager,
+            container=self.window
+        )
+
+        y = 10
+        self.buttons = {} # btn -> action
+
+        for label, getter, action in self.options:
+            UILabel(
+                relative_rect=pygame.Rect(10, y, 200, 30),
+                text=label + ":",
+                manager=self.ui_manager,
+                container=container
+            )
+
+            val_text = getter() if getter else ">>>"
+            btn = UIButton(
+                relative_rect=pygame.Rect(220, y, 300, 30),
+                text=val_text,
+                manager=self.ui_manager,
+                container=container
+            )
+            self.buttons[btn] = action
+            if getter:
+                self.ui_elements.append((getter, btn))
+
+            y += 40
+
+        container.set_scrollable_area_dimensions((win_w - 50, y + 10))
+
+    def exit(self):
+        if self.window:
+            self.window.kill()
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element in self.buttons:
+                action = self.buttons[event.ui_element]
+                if action: action()
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.window:
+                self.manager.pop()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.pop()
+
+    def update(self, dt):
+        # Update dynamic labels
+        for getter, element in self.ui_elements:
+            new_val = getter()
+            if element.text != new_val:
+                element.set_text(new_val)
 
     def draw(self, surface):
-        overlay = pygame.Surface((self.context.width, self.context.height), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
-        surface.blit(overlay, (0, 0))
-
-        menu_w, menu_h = 600, 500
-        mx, my = (self.context.width - menu_w)//2, (self.context.height - menu_h)//2
-        pygame.draw.rect(surface, (30, 30, 40), (mx, my, menu_w, menu_h))
-        pygame.draw.rect(surface, (0, 255, 255), (mx, my, menu_w, menu_h), 2)
-
-        title = self.context.font.render(self.title, True, (0, 255, 255))
-        surface.blit(title, (mx + 20, my + 20))
-
-        for i, (label, getter, _) in enumerate(self.options):
-            color = (255, 255, 255) if i == self.selected_idx else (150, 150, 150)
-            val_str = getter() if getter else ""
-            text = f"{label}: {val_str}"
-            surf = self.context.font.render(text, True, color)
-            surface.blit(surf, (mx + 30, my + 80 + i * 40))
+        pass
 
 class CAGenState(BaseGenConfigState):
     def __init__(self, manager, context, session):

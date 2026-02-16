@@ -94,7 +94,7 @@ class AppFlow(StateMachine):
 
     def push_resize_wizard(self, map_obj, vw, vh, callback):
         from menu import menu_resize_map
-        menu_resize_map(self.renderer, map_obj, vw, vh, callback)
+        menu_resize_map(self.manager, self.renderer, map_obj, vw, vh, callback)
 
     def push_form(self, title, fields, callback):
         from menu import FormState

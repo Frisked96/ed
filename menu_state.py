@@ -18,6 +18,14 @@ class MainMenuState(State):
 
     def enter(self, **kwargs):
         """Create pygame_gui elements when the state is entered."""
+        self._rebuild_ui()
+
+    def _rebuild_ui(self):
+        # Clean up old elements if any
+        for element in self.ui_elements:
+            element.kill()
+        self.ui_elements.clear()
+
         w, h = self.renderer.screen.get_size()
         
         # Title
@@ -65,7 +73,11 @@ class MainMenuState(State):
         vh = (self.renderer.height - 120) // self.renderer.tile_size
         flow = self.manager.flow
 
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+        if event.type == pygame.VIDEORESIZE:
+            self.renderer.update_dimensions()
+            self._rebuild_ui()
+
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             # Check by button text for maximum reliability in this setup
             text = event.ui_element.text
             
@@ -107,4 +119,5 @@ class MainMenuState(State):
             macros=self.macros, 
             tiling_rules=self.tiling_rules
         )
+        self.renderer.invalidate_cache()
         self.manager.flow.start_session(session=session)

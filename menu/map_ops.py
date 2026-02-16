@@ -21,8 +21,8 @@ class NewMapState(FormState):
             
             from core import Map
             try:
-                w = max(self.view_width, int(res["width"]))
-                h = max(self.view_height, int(res["height"]))
+                w = int(res["width"])
+                h = int(res["height"])
                 map_obj = Map(w, h)
                 border_char = res["border"][0] if res["border"] and res["border"] != "." else None
                 if border_char:
@@ -57,14 +57,15 @@ class LoadMapState(State):
                         lines = [line.rstrip("\n") for line in f]
                     if lines:
                         w = max(len(l) for l in lines); h = len(lines)
-                        w = max(w, self.view_width); h = max(h, self.view_height)
                         m = Map(w, h)
                         for y, line in enumerate(lines):
                             for x, ch in enumerate(line):
                                 m.set(x, y, REGISTRY.get_by_char(ch))
+                        self.manager.pop() # Pop LoadMapState
                         self.callback(m)
                         return
                 except: pass
+            self.manager.pop() # Pop LoadMapState even on failure
             self.callback(None)
 
         self.manager.push(TextInputState(self.manager, self.context, "Load map from: ", on_filename))
@@ -122,8 +123,8 @@ class ResizeMapState(FormState):
             
             from core import Map
             try:
-                w = max(self.view_width, int(res["width"]))
-                h = max(self.view_height, int(res["height"]))
+                w = int(res["width"])
+                h = int(res["height"])
                 new_map = Map(w, h)
                 copy_h = min(h, self.map_obj.height)
                 copy_w = min(w, self.map_obj.width)

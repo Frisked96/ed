@@ -210,7 +210,6 @@ class Renderer:
         self.screen.set_clip(None)
         
         session.status_y = self.height - 110
-        self.draw_notifications()
 
     def _draw_measurement_overlay(self, session):
         if not session.tool_state.measurement_active: return

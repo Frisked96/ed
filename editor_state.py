@@ -16,6 +16,8 @@ class EditorState(State):
         # Set initial fixed pixel dimensions
         self.session.viewport_px_w = self.renderer.width
         self.session.viewport_px_h = self.renderer.height - 120
+        self.session.view_width = self.session.viewport_px_w // self.renderer.tile_size
+        self.session.view_height = self.session.viewport_px_h // self.renderer.tile_size
         
         self.palette_rects = None
         
@@ -23,12 +25,16 @@ class EditorState(State):
         self.pan_start_pos = (0, 0)
         self.pan_start_cam = (0, 0)
         
-        # Register map listener
-        self._register_map_listener()
+        # Track current map to detect changes (loading/new map)
+        self.current_map = self.session.map_obj
+        self._register_map_listener(self.current_map)
 
-    def _register_map_listener(self):
-        # Remove from old map if needed (though session usually has one map)
-        self.session.map_obj.listeners.append(self._on_map_change)
+    def _register_map_listener(self, map_obj):
+        map_obj.listeners.append(self._on_map_change)
+
+    def _unregister_map_listener(self, map_obj):
+        if self._on_map_change in map_obj.listeners:
+            map_obj.listeners.remove(self._on_map_change)
 
     def _on_map_change(self, x, y):
         if x is None or y is None:
@@ -109,6 +115,13 @@ class EditorState(State):
 
 
     def update(self, dt):
+        # Check if map object was swapped (e.g. Load/New)
+        if self.session.map_obj is not self.current_map:
+            self._unregister_map_listener(self.current_map)
+            self.current_map = self.session.map_obj
+            self._register_map_listener(self.current_map)
+            self.renderer.invalidate_cache()
+
         # Sync keys to prevent stuck inputs after modal dialogs
         self.input_handler.check_held_keys()
         

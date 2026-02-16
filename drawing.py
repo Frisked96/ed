@@ -30,15 +30,10 @@ def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_s
         y0, y1 = max(0, y - offset), min(map_obj.height, y + offset + 1)
         x0, x1 = max(0, x - offset), min(map_obj.width, x + offset + 1)
         
-        if tool_state and tool_state.auto_tiling:
-            for by in range(y0, y1):
-                for bx in range(x0, x1):
-                    map_obj.set(bx, by, final_tile(bx, by, tile_id))
-        else:
-            # Faster bulk set if no autotiling
-            map_obj.data[y0:y1, x0:x1] = tile_id
-            map_obj.dirty = True
-            map_obj.trigger_full_update()
+        # We must call map_obj.set to trigger callbacks for macros
+        for by in range(y0, y1):
+            for bx in range(x0, x1):
+                map_obj.set(bx, by, final_tile(bx, by, tile_id))
 
 def flood_fill(map_obj, x, y, new_tile_id):
     old_tile_id = map_obj.get(x, y)
@@ -102,14 +97,11 @@ def get_rect_points(x0, y0, x1, y1, filled=False):
 
 def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
     if filled:
-        # Optimized filled draw
         min_x, max_x = (x0, x1) if x0 < x1 else (x1, x0)
         min_y, max_y = (y0, y1) if y0 < y1 else (y1, y0)
-        y0_f, y1_f = max(0, min_y), min(map_obj.height, max_y + 1)
-        x0_f, x1_f = max(0, min_x), min(map_obj.width, max_x + 1)
-        map_obj.data[y0_f:y1_f, x0_f:x1_f] = tile_id
-        map_obj.dirty = True
-        map_obj.trigger_full_update()
+        for ry in range(min_y, max_y + 1):
+            for rx in range(min_x, max_x + 1):
+                map_obj.set(rx, ry, tile_id)
     else:
         for x, y in get_rect_points(x0, y0, x1, y1, filled=False):
             place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
@@ -148,12 +140,10 @@ def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_sh
     if filled:
         y0, y1 = max(0, cy - radius), min(map_obj.height, cy + radius + 1)
         x0, x1 = max(0, cx - radius), min(map_obj.width, cx + radius + 1)
-        Y, X = np.ogrid[y0:y1, x0:x1]
-        dist_sq = (X - cx)**2 + (Y - cy)**2
-        mask = dist_sq <= radius**2
-        map_obj.data[y0:y1, x0:x1][mask] = tile_id
-        map_obj.dirty = True
-        map_obj.trigger_full_update()
+        for ry in range(y0, y1):
+            for rx in range(x0, x1):
+                if (rx - cx)**2 + (ry - cy)**2 <= radius**2:
+                    map_obj.set(rx, ry, tile_id)
     else:
         for x, y in get_circle_points(cx, cy, radius, filled=False):
             place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)

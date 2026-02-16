@@ -1,0 +1,22 @@
+# Gemini CLI Project Map
+
+- `main.py`: Entry point; initializes Pygame, the renderer, and the state-driven application flow.
+- `core.py`: Defines core data structures like `Map`, `EditorSession`, `ToolState`, and the `UndoStack`.
+- `editor_state.py`: Manages the primary editor UI, viewport logic, tool interactions, and event handling.
+- `state_engine.py`: A generic state machine and stack-based manager for handling application states and UI layers.
+- `view.py`: Handles high-performance map rendering using chunk-based caching and procedural glyph generation.
+- `flow.py`: A high-level state controller that manages transitions between menus, wizards, and the editor.
+- `controller.py`: Dispatches input events (keys/mouse) to functional actions based on configurable bindings.
+- `drawing.py`: Implements geometric drawing algorithms (lines, rects, circles) and tile placement logic.
+- `map_io.py`: Handles file system operations for loading/saving maps, configurations, and macros.
+- `tiles.py`: Manages the `REGISTRY` of tile definitions, their characters, colors, and metadata.
+- `utils.py`: Contains shared utility functions for math, coordinate conversion, and distance calculations.
+- `signals.py`: Provides a simple observer pattern for decoupled event notifications across modules.
+- `actions/`: Directory containing modular handlers for specific editor features (file ops, drawing, macros, etc.).
+- `menu/`: Directory containing UI state implementations for menus, pickers, and modal dialogs.
+- `rogue/`: (Placeholder or sub-module) Likely intended for specific roguelike logic or game-specific extensions.
+- `colors.json`: External configuration for standardizing color names to RGB values.
+- `theme.json`: Configuration for the Pygame GUI visual style and appearance.
+- `custom_tiles.json`: Persistent storage for user-defined tile types.
+- `macros.json`: Persistent storage for recorded relative-tile macros.
+- `map_editor_config.json`: Stores user preferences and custom key/mouse input bindings.

@@ -112,3 +112,33 @@ def handle_macro_set_offset(session, manager, action=None):
             session.tool_state.macro_offset = (int(parts[0]), int(parts[1]))
         except: pass
     manager.flow.push_text_input("Offset (dx, dy): ", on_val)
+
+def handle_macro_auto_offset(session, manager, action=None):
+    ts = session.tool_state
+    if not ts.selected_macro or ts.selected_macro not in ts.macros:
+        # Check if we just finished recording
+        if not ts.current_macro_tiles:
+            show_message(manager, "No macro to analyze", notify=True)
+            return
+        tiles = ts.current_macro_tiles
+    else:
+        tiles = ts.macros[ts.selected_macro]['tiles']
+
+    if not tiles: return
+    
+    min_x = min(t[0] for t in tiles)
+    max_x = max(t[0] for t in tiles)
+    min_y = min(t[1] for t in tiles)
+    max_y = max(t[1] for t in tiles)
+    
+    w = max_x - min_x + 1
+    h = max_y - min_y + 1
+    
+    def on_choice(choice):
+        if choice == "Horizontal":
+            ts.macro_offset = (w + 1, 0)
+        elif choice == "Vertical":
+            ts.macro_offset = (0, h + 1)
+        show_message(manager, f"Offset set: {ts.macro_offset}", notify=True)
+
+    manager.flow.push_choice_selector("Auto Offset (Gap: 1)", ["Horizontal", "Vertical"], on_choice)

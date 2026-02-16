@@ -15,7 +15,8 @@ from .generate import handle_generation, handle_set_seed
 from .tiles import handle_tile_management, handle_replace_all
 from .macro import (
     handle_macro_toggle, handle_macro_play, handle_macro_select,
-    handle_macro_set_iterations, handle_macro_toggle_until_end, handle_macro_set_offset
+    handle_macro_set_iterations, handle_macro_toggle_until_end, handle_macro_set_offset,
+    handle_macro_auto_offset
 )
 from .measure import (
     handle_measurement, handle_measurement_toggle,
@@ -64,6 +65,7 @@ def get_action_dispatcher():
         'macro_set_iterations': handle_macro_set_iterations,
         'macro_toggle_until_end': handle_macro_toggle_until_end,
         'macro_set_offset': handle_macro_set_offset,
+        'macro_auto_offset': handle_macro_auto_offset,
         'toggle_measurement': handle_measurement_toggle,
         'measurement_menu': handle_measurement_configure,
         'add_measure_point': handle_add_measurement_point,

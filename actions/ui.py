@@ -65,7 +65,8 @@ def handle_open_context_menu(session, manager, action=None):
 
     from .macro import (
         handle_macro_toggle, handle_macro_play, handle_macro_select,
-        handle_macro_set_iterations, handle_macro_toggle_until_end, handle_macro_set_offset
+        handle_macro_set_iterations, handle_macro_toggle_until_end, handle_macro_set_offset,
+        handle_macro_auto_offset
     )
 
     mouse_pos = pygame.mouse.get_pos()
@@ -112,6 +113,7 @@ def handle_open_context_menu(session, manager, action=None):
             ("Macro: Iterations (" + str(ts.macro_iterations) + ")", lambda: handle_macro_set_iterations(session, manager)),
             ("Macro: Until End (" + ("ON" if ts.macro_until_end else "OFF") + ")", lambda: handle_macro_toggle_until_end(session, manager)),
             ("Macro: Offset (Manual)", lambda: handle_macro_set_offset(session, manager)),
+            ("Macro: Auto Offset (1-tile gap)", lambda: handle_macro_auto_offset(session, manager)),
             ("Macro: Offset (Horizontal 1,0)", lambda: setattr(ts, 'macro_offset', (1, 0)) or show_message(manager, "Offset set to Horizontal", notify=True)),
             ("Macro: Offset (Vertical 0,1)", lambda: setattr(ts, 'macro_offset', (0, 1)) or show_message(manager, "Offset set to Vertical", notify=True)),
             ("---", None),

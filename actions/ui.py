@@ -112,3 +112,10 @@ def handle_open_context_menu(session, manager, action=None):
         ]
 
     manager.push(ContextMenuState(manager, manager.flow.renderer, options, mouse_pos))
+
+def handle_toggle_fullscreen(session, manager, action=None):
+    try:
+        pygame.display.toggle_fullscreen()
+    except Exception as e:
+        print(f"Fullscreen toggle failed: {e}")
+

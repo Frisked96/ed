@@ -105,7 +105,7 @@ class EditorState(State):
             return
 
         w, h = self.renderer.screen.get_size()
-        win_w, win_h = 320, h - 150
+        win_w, win_h = 420, h - 150
 
         self.palette_window = UIWindow(
             rect=pygame.Rect(w - win_w - 20, 20, win_w, win_h),

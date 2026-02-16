@@ -31,7 +31,7 @@ class Renderer:
         self.screen = screen
         self.width, self.height = screen.get_size()
         
-        self.font_size = 20
+        self.font_size = 32 # Larger font for better fill
         font_names = ["DejaVu Sans Mono", "FreeMono", "Courier New", "monospace", "Arial Unicode MS", "Segoe UI Symbol"]
         self.font = None
         for name in font_names:
@@ -171,11 +171,18 @@ class Renderer:
                 self.glyph_cache[key] = box_surf
                 return box_surf
 
-        surf = self.font.render(char, True, color, bg_color)
-        # If the font isn't bold enough, we could potentially blit it twice with an offset,
-        # but standard bold=True in SysFont should be sufficient if the font supports it.
-        self.glyph_cache[key] = surf
-        return surf
+        # Font Rendering
+        raw_surf = self.font.render(char, True, color) # No BG here to avoid filling large rect
+        
+        # Center on a square surface of 'tile_size'
+        s = pygame.Surface((self.tile_size, self.tile_size), pygame.SRCALPHA)
+        if bg_color: s.fill(bg_color)
+        
+        rect = raw_surf.get_rect(center=(self.tile_size//2, self.tile_size//2))
+        s.blit(raw_surf, rect)
+        
+        self.glyph_cache[key] = s
+        return s
 
     def clear(self):
         self.screen.fill((0, 0, 0))

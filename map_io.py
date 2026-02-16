@@ -42,6 +42,7 @@ def load_config():
         'measurement_menu': 'shift f2',
         'add_measure_point': 'alt mouse 1',
         'quit': 'q',
+        'toggle_fullscreen': 'f11',
     }
 
     if os.path.exists(config_path):

@@ -1,5 +1,8 @@
 from .file import handle_quit, handle_file_ops, handle_undo_redo
-from .ui import handle_editor_menu, handle_open_context_menu, handle_statistics, handle_show_help, handle_edit_controls
+from .ui import (
+    handle_editor_menu, handle_open_context_menu, handle_statistics,
+    handle_show_help, handle_edit_controls, handle_toggle_fullscreen
+)
 from .view import handle_zoom, handle_move_view, handle_move_cursor, handle_goto_coords
 from .draw import (
     handle_place_tile, handle_flood_fill, handle_brush_size, handle_tool_select,
@@ -57,4 +60,5 @@ def get_action_dispatcher():
         'toggle_measurement': handle_measurement_toggle,
         'measurement_menu': handle_measurement_configure,
         'add_measure_point': handle_add_measurement_point,
+        'toggle_fullscreen': handle_toggle_fullscreen,
     }

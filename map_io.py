@@ -65,17 +65,44 @@ def save_config(bindings):
     except: pass
 
 def load_tiles():
-    tiles_path = os.path.join(os.getcwd(), 'custom_tiles.json')
-    if not os.path.exists(tiles_path):
-        return []
-    try:
-        with open(tiles_path, 'r') as f:
-            return json.load(f)
-    except:
-        return []
+    custom_tiles = []
+
+    # Animated tiles (Base defaults)
+    anim_path = os.path.join(os.getcwd(), 'tiles', 'animated_tiles.json')
+    if os.path.exists(anim_path):
+        try:
+            with open(anim_path, 'r') as f:
+                anim_tiles = json.load(f)
+                custom_tiles.extend(anim_tiles)
+        except:
+            pass
+
+    # Primary custom tiles (User overrides)
+    tiles_path = os.path.join(os.getcwd(), 'tiles', 'custom_tiles.json')
+    if os.path.exists(tiles_path):
+        try:
+            with open(tiles_path, 'r') as f:
+                user_tiles = json.load(f)
+                custom_tiles.extend(user_tiles)
+        except:
+            pass
+
+    return custom_tiles
 
 def save_tiles(tile_definitions):
-    tiles_path = os.path.join(os.getcwd(), 'custom_tiles.json')
+    # Ensure directory exists
+    tiles_dir = os.path.join(os.getcwd(), 'tiles')
+    os.makedirs(tiles_dir, exist_ok=True)
+
+    tiles_path = os.path.join(tiles_dir, 'custom_tiles.json')
+
+    # Filter out animated tiles that belong to animated_tiles.json if we want separation?
+    # For simplicity, we save all user-defined/edited tiles to custom_tiles.json for now,
+    # or we can try to respect the source.
+    # Given the prompt, let's just save everything to custom_tiles.json for persistence
+    # unless we want to split them. The prompt asked for a separate dir, which we made.
+    # We will save all 'persist=True' tiles here.
+
     try:
         # tile_definitions should be a list of dicts from TileDefinition.dict()
         with open(tiles_path, 'w') as f:

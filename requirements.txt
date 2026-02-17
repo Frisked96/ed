@@ -5,3 +5,4 @@ tcod
 scipy
 Pillow
 blinker
+pydantic

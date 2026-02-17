@@ -1,0 +1,96 @@
+[
+  {
+    "id": 201,
+    "char": "~",
+    "name": "Water Flow",
+    "color": "blue",
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {"liquid": true},
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#0000AA", "#0000FF", "#4444FF", "#0000FF", "#0000AA"],
+      "flow_speed": 1.5,
+      "flow_direction": "diagonal"
+    }
+  },
+  {
+    "id": 202,
+    "char": "~",
+    "name": "Lava Flow",
+    "color": "red",
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {"liquid": true, "damage": 10},
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#AA0000", "#FF0000", "#FF8800", "#FFFF00", "#FF8800", "#FF0000", "#AA0000"],
+      "flow_speed": 1.0,
+      "flow_direction": "diagonal"
+    }
+  },
+  {
+    "id": 203,
+    "char": "═",
+    "name": "Lightning (H)",
+    "color": "yellow",
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#888800", "#FFFF00", "#FFFFFF", "#FFFF00", "#888800"],
+      "flow_speed": 5.0,
+      "flow_direction": "horizontal"
+    }
+  },
+  {
+    "id": 204,
+    "char": "║",
+    "name": "Lightning (V)",
+    "color": "yellow",
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#888800", "#FFFF00", "#FFFFFF", "#FFFF00", "#888800"],
+      "flow_speed": 5.0,
+      "flow_direction": "vertical"
+    }
+  },
+  {
+    "id": 205,
+    "char": "#",
+    "name": "Pulsing Wall",
+    "color": "magenta",
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": {
+      "mode": "sequence",
+      "frames": ["#", "▓", "▒", "░", "▒", "▓"],
+      "frame_duration": 0.15
+    }
+  },
+  {
+    "id": 206,
+    "char": "w",
+    "name": "Fire",
+    "color": "red",
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": {
+      "mode": "sequence",
+      "frames": ["w", "W", "M"],
+      "frame_duration": 0.1
+    }
+  }
+]

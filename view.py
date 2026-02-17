@@ -75,6 +75,7 @@ class Renderer:
         self.glyph_cache = {}
         self.chunk_cache = {} # (chunk_x, chunk_y) -> Surface
         self.chunk_size = 32
+        self.start_time = time.time()
         
         # Subscribe to tile changes
         REGISTRY.subscribe(self.invalidate_cache)
@@ -263,30 +264,43 @@ class Renderer:
         if (cx, cy) in self.chunk_cache:
             del self.chunk_cache[(cx, cy)]
 
-    def get_glyph(self, tile_id, bg_color=None):
-        # Optimized lookup
-        key = (tile_id, bg_color)
-        if key in self.glyph_cache:
+    def get_glyph(self, tile_id, bg_color=None, char_override=None, color_override=None):
+        # Optimized lookup for static tiles
+        key = (tile_id, bg_color, char_override, color_override)
+        # Only cache if no overrides, or maybe cache overrides too if we want (but they change often)
+        # For now, bypassing cache for animations ensures correctness without memory bloat
+        if char_override is None and color_override is None and key in self.glyph_cache:
             return self.glyph_cache[key]
 
         tile_def = REGISTRY.get(tile_id)
         if not tile_def:
             return None
         
-        char = tile_def.char
+        char = char_override if char_override is not None else tile_def.char
         
         # Handle color parsing
-        color_val = tile_def.color
-        if isinstance(color_val, str):
-            color = COLOR_MAP.get(color_val.lower(), (255, 255, 255))
+        def parse_color(c):
+            if isinstance(c, str):
+                if c.startswith('#'):
+                    try:
+                        return pygame.Color(c)
+                    except:
+                        return (255, 255, 255)
+                return COLOR_MAP.get(c.lower(), (255, 255, 255))
+            return c
+
+        if color_override is not None:
+             color = parse_color(color_override)
         else:
-            color = color_val
+             color = parse_color(tile_def.color)
 
         # Try procedural rendering first for box/block/shade chars
         if char in BOX_DRAWING_CHARS or '\u2500' <= char <= '\u259f' or char in ('█', '░', '▒', '▓', '▔', '▕'):
             box_surf = self._render_box_char(char, color, bg_color)
             if box_surf:
-                self.glyph_cache[key] = box_surf
+                # Only cache static glyphs
+                if char_override is None and color_override is None:
+                    self.glyph_cache[key] = box_surf
                 return box_surf
 
         # Font Rendering
@@ -299,7 +313,9 @@ class Renderer:
         rect = raw_surf.get_rect(center=(self.tile_size//2, self.tile_size//2))
         s.blit(raw_surf, rect)
         
-        self.glyph_cache[key] = s
+        # Only cache static glyphs
+        if char_override is None and color_override is None:
+            self.glyph_cache[key] = s
         return s
 
     def clear(self):
@@ -329,6 +345,9 @@ class Renderer:
             layers_to_draw.append((z - 1, 80)) # Ghost previous level
         layers_to_draw.append((z, 255))      # Current level
 
+        contains_animation = False
+        elapsed = time.time() - self.start_time
+
         for layer_z, alpha in layers_to_draw:
             if layer_z not in session.map_obj.layers:
                 continue
@@ -337,11 +356,47 @@ class Renderer:
 
             for y_rel, row in enumerate(data):
                 py = y_rel * ts
+                map_y = start_y + y_rel
+
                 for x_rel, tid in enumerate(row):
                     if tid == 0: continue
 
+                    map_x = start_x + x_rel
                     px = x_rel * ts
-                    glyph = self.get_glyph(tid)
+
+                    # Check animation
+                    char_ov = None
+                    col_ov = None
+
+                    if REGISTRY.is_animated(tid):
+                        contains_animation = True
+                        tile_def = REGISTRY.get(tid)
+                        anim = tile_def.animation
+                        if anim:
+                            # Sequence Animation (Char Loop)
+                            if anim.mode == 'sequence' and anim.frames:
+                                f_idx = int(elapsed / anim.frame_duration) % len(anim.frames)
+                                val = anim.frames[f_idx]
+                                if isinstance(val, int):
+                                    ref_tile = REGISTRY.get(val)
+                                    char_ov = ref_tile.char if ref_tile else '?'
+                                else:
+                                    char_ov = str(val)
+
+                            # Flow Animation (Color Wave)
+                            elif anim.mode == 'flow' and anim.flow_colors:
+                                phase = 0
+                                if anim.flow_direction == 'horizontal':
+                                    phase = map_x * 0.2
+                                elif anim.flow_direction == 'vertical':
+                                    phase = map_y * 0.2
+                                else: # diagonal
+                                    phase = (map_x + map_y) * 0.1
+
+                                c_idx = int((elapsed * anim.flow_speed + phase)) % len(anim.flow_colors)
+                                col_ov = anim.flow_colors[c_idx]
+
+                    glyph = self.get_glyph(tid, char_override=char_ov, color_override=col_ov)
                     if glyph:
                         if alpha < 255:
                             temp = glyph.copy()
@@ -350,7 +405,7 @@ class Renderer:
                         else:
                             surf.blit(glyph, (px, py))
         
-        return surf
+        return surf, contains_animation
 
     def draw_map(self, session):
         # Clear the whole screen first
@@ -381,9 +436,12 @@ class Renderer:
                 if cx < 0 or cx * self.chunk_size >= session.map_obj.width: continue
                 
                 if (cx, cy) not in self.chunk_cache:
-                    self.chunk_cache[(cx, cy)] = self._render_chunk(session, cx, cy)
+                    chunk_surf, is_anim = self._render_chunk(session, cx, cy)
+                    if not is_anim:
+                        self.chunk_cache[(cx, cy)] = chunk_surf
+                else:
+                    chunk_surf = self.chunk_cache[(cx, cy)]
                 
-                chunk_surf = self.chunk_cache[(cx, cy)]
                 px = (cx * self.chunk_size - cam_x) * tile_size
                 py = (cy * self.chunk_size - cam_y) * tile_size
                 self.screen.blit(chunk_surf, (px, py))

@@ -3,7 +3,7 @@ from .ui import (
     handle_editor_menu, handle_open_context_menu, handle_statistics,
     handle_show_help, handle_edit_controls, handle_toggle_fullscreen
 )
-from .view import handle_zoom, handle_move_view, handle_move_cursor, handle_goto_coords
+from .view import handle_zoom, handle_move_view, handle_move_cursor, handle_goto_coords, handle_layer_change
 from .draw import (
     handle_place_tile, handle_flood_fill, handle_brush_size, handle_tool_select,
     handle_define_pattern, handle_define_brush, handle_toggle_snap,
@@ -33,6 +33,7 @@ def get_action_dispatcher():
         'move_view_left': handle_move_view, 'move_view_right': handle_move_view,
         'move_cursor_up': handle_move_cursor, 'move_cursor_down': handle_move_cursor,
         'move_cursor_left': handle_move_cursor, 'move_cursor_right': handle_move_cursor,
+        'layer_up': handle_layer_change, 'layer_down': handle_layer_change,
         'place_tile': handle_place_tile,
         'flood_fill': handle_flood_fill,
         'undo': handle_undo_redo, 'redo': handle_undo_redo,

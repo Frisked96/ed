@@ -32,6 +32,7 @@ def load_config():
         'map_shift_up': 'None', 'map_shift_down': 'None',
         'map_shift_left': 'None', 'map_shift_right': 'None',
         'macro_record_toggle': '(', 'macro_play': ')',
+        'layer_up': 'page up', 'layer_down': 'page down',
         'editor_menu': 'f1',
         'toggle_snap': 'G', 'set_measure': 'N',
         'toggle_palette': 'tab',
@@ -109,16 +110,121 @@ def export_to_image(map_data, _tile_colors, filename, tile_size=8):
 
 def autosave_map(map_obj, filename):
     try:
-        with open(filename, 'w') as f:
-            for row in map_obj.data:
+        if filename.endswith('.json'):
+            save_map_json(map_obj, filename)
+        else:
+            save_map_text_layers(map_obj, filename)
+        return True
+    except Exception as e:
+        print(f"Autosave failed: {e}")
+        return False
+
+def save_map_json(map_obj, filename):
+    data = {
+        "width": map_obj.width,
+        "height": map_obj.height,
+        "layers": {}
+    }
+    for z, layer in map_obj.layers.items():
+        data["layers"][str(z)] = layer.tolist()
+
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
+def save_map_text_layers(map_obj, filename):
+    with open(filename, 'w') as f:
+        sorted_z = sorted(map_obj.layers.keys())
+        # If only layer 0 and no others, use legacy format (no header)
+        if len(sorted_z) == 1 and sorted_z[0] == 0:
+            for row in map_obj.layers[0]:
                 line_chars = []
                 for tid in row:
                     t = REGISTRY.get(tid)
                     line_chars.append(t.char if t else ' ')
                 f.write(''.join(line_chars) + '\n')
-        return True
-    except:
-        return False
+        else:
+            for z in sorted_z:
+                f.write(f"[Layer {z}]\n")
+                layer = map_obj.layers[z]
+                for row in layer:
+                    line_chars = []
+                    for tid in row:
+                        t = REGISTRY.get(tid)
+                        line_chars.append(t.char if t else ' ')
+                    f.write(''.join(line_chars) + '\n')
+
+def load_map_from_file(filename):
+    if filename.endswith('.json'):
+        return load_map_json(filename)
+    return load_map_text(filename)
+
+def load_map_json(filename):
+    with open(filename, 'r') as f:
+        data = json.load(f)
+
+    w = data.get('width', 10)
+    h = data.get('height', 10)
+    from core import Map
+    m = Map(w, h)
+
+    layers = data.get('layers', {})
+    for z_str, layer_data in layers.items():
+        z = int(z_str)
+        m.layers[z] = np.array(layer_data, dtype=np.uint16)
+    return m
+
+def load_map_text(filename):
+    with open(filename, 'r') as f:
+        lines = [line.rstrip('\n') for line in f]
+
+    import re
+    layer_header_re = re.compile(r"^\[Layer (\d+)\]$")
+
+    from core import Map
+
+    # Detect multi-layer
+    if lines and layer_header_re.match(lines[0]):
+        layers_data = {}
+        current_z = 0
+        current_lines = []
+
+        for line in lines:
+            m = layer_header_re.match(line)
+            if m:
+                if current_lines:
+                    layers_data[current_z] = current_lines
+                current_z = int(m.group(1))
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_lines:
+            layers_data[current_z] = current_lines
+
+        max_w = 0
+        max_h = 0
+        for z, l_lines in layers_data.items():
+            max_h = max(max_h, len(l_lines))
+            for l in l_lines:
+                max_w = max(max_w, len(l))
+
+        map_obj = Map(max_w, max_h)
+        for z, l_lines in layers_data.items():
+            map_obj.ensure_layer(z)
+            for y, line in enumerate(l_lines):
+                for x, char in enumerate(line):
+                    tid = REGISTRY.get_by_char(char)
+                    if tid:
+                        map_obj.layers[z][y, x] = tid
+        return map_obj
+    else:
+        # Legacy single layer
+        w = max(len(l) for l in lines) if lines else 0
+        h = len(lines)
+        m = Map(w, h)
+        for y, line in enumerate(lines):
+            for x, char in enumerate(line):
+                m.set(x, y, REGISTRY.get_by_char(char))
+        return m
 
 def save_macros(macros):
     path = os.path.join(os.getcwd(), 'macros.json')

@@ -27,32 +27,57 @@ class Map:
         self.dirty = False
         self.listeners = []
         self.on_tile_changed_callback = None
+
+        self.layers = {}
         if data is not None:
-            if isinstance(data, np.ndarray):
-                self.data = data.copy()
+            if isinstance(data, dict):
+                 # Assume dictionary of layers
+                 self.layers = {int(k): v.copy() for k, v in data.items()}
+            elif isinstance(data, np.ndarray):
+                self.layers[0] = data.copy()
             else:
-                self.data = np.array(data, dtype=np.uint16)
+                self.layers[0] = np.array(data, dtype=np.uint16)
         else:
-            self.data = np.full((height, width), fill_tile_id, dtype=np.uint16)
+            self.layers[0] = np.full((height, width), fill_tile_id, dtype=np.uint16)
+
+    @property
+    def data(self):
+        """Backward compatibility: returns layer 0."""
+        return self.layers[0]
+
+    @data.setter
+    def data(self, value):
+        """Backward compatibility: sets layer 0 or all layers if dict."""
+        if isinstance(value, dict):
+            self.layers = value
+        else:
+            self.layers[0] = value
 
     def is_inside(self, x, y):
         return 0 <= x < self.width and 0 <= y < self.height
 
-    def get(self, x, y):
+    def ensure_layer(self, z):
+        if z not in self.layers:
+            self.layers[z] = np.zeros((self.height, self.width), dtype=np.uint16)
+
+    def get(self, x, y, z=0):
+        if z not in self.layers:
+            return 0
         if 0 <= x < self.width and 0 <= y < self.height:
-            return self.data[y, x]
+            return self.layers[z][y, x]
         return None
     
-    def get_tile_def(self, x, y):
-        tid = self.get(x, y)
+    def get_tile_def(self, x, y, z=0):
+        tid = self.get(x, y, z)
         if tid is not None:
             return REGISTRY.get(tid)
         return None
 
-    def set(self, x, y, tile_id):
+    def set(self, x, y, tile_id, z=0):
         if 0 <= x < self.width and 0 <= y < self.height:
-            if self.data[y, x] != tile_id:
-                self.data[y, x] = tile_id
+            self.ensure_layer(z)
+            if self.layers[z][y, x] != tile_id:
+                self.layers[z][y, x] = tile_id
                 self.dirty = True
                 for l in self.listeners:
                     l(x, y)
@@ -67,16 +92,16 @@ class Map:
 
     def push_undo(self):
         if self.undo_stack:
-            self.undo_stack.push(self.data.copy())
+            self.undo_stack.push(self.copy_data())
 
     def copy_data(self):
-        return self.data.copy()
+        return {z: layer.copy() for z, layer in self.layers.items()}
 
     def __iter__(self):
-        return iter(self.data)
+        return iter(self.layers[0])
 
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.layers[0][idx]
 
 class UndoStack:
     def __init__(self, max_size=100):
@@ -166,6 +191,7 @@ class EditorSession:
         self.camera_x, self.camera_y = 0, 0
         self.camera_speed = 2
         self.cursor_x, self.cursor_y = 0, 0
+        self.active_z_level = 0
         
         # Default selection
         self.selected_tile_id = 1 
@@ -183,8 +209,8 @@ class EditorSession:
         self.map_obj.push_undo()
         if direction == 'horizontal':
             for lx in range(self.map_obj.width):
-                self.map_obj.set(lx, y, self.selected_tile_id)
+                self.map_obj.set(lx, y, self.selected_tile_id, z=self.active_z_level)
         elif direction == 'vertical':
             for ly in range(self.map_obj.height):
-                self.map_obj.set(x, ly, self.selected_tile_id)
+                self.map_obj.set(x, ly, self.selected_tile_id, z=self.active_z_level)
 

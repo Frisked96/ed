@@ -14,21 +14,24 @@ def handle_selection(session, manager, action=None):
     elif action == 'copy_selection' and session.selection_start and session.selection_end:
         x0, y0 = session.selection_start
         x1, y1 = session.selection_end
-        session.clipboard = [[session.map_obj.get(x, y) for x in range(x0, x1+1)] for y in range(y0, y1+1)]
+        z = session.active_z_level
+        session.clipboard = [[session.map_obj.get(x, y, z=z) for x in range(x0, x1+1)] for y in range(y0, y1+1)]
         show_message(manager, f"Copied {x1-x0+1}x{y1-y0+1} area", notify=True)
     elif action == 'paste_selection' and session.clipboard:
         session.map_obj.push_undo()
+        z = session.active_z_level
         for dy, row in enumerate(session.clipboard):
             for dx, ch in enumerate(row):
-                session.map_obj.set(session.cursor_x + dx, session.cursor_y + dy, ch)
+                session.map_obj.set(session.cursor_x + dx, session.cursor_y + dy, ch, z=z)
         session.tool_state.edits_since_save += 1
         check_autosave(session, manager)
         show_message(manager, "Pasted area", notify=True)
     elif action == 'clear_area' and session.selection_start and session.selection_end:
         session.map_obj.push_undo()
+        z = session.active_z_level
         for y in range(session.selection_start[1], session.selection_end[1]+1):
             for x in range(session.selection_start[0], session.selection_end[0]+1):
-                session.map_obj.set(x, y, 0) # 0 is void
+                session.map_obj.set(x, y, 0, z=z) # 0 is void
         session.tool_state.edits_since_save += 1
         check_autosave(session, manager)
         show_message(manager, "Area cleared", notify=True)
@@ -52,7 +55,8 @@ def handle_rotate_selection_action(session, manager, action=None):
     h = sy1 - sy0 + 1
 
     # Copy data
-    data = [[session.map_obj.get(x, y) for x in range(sx0, sx1+1)] for y in range(sy0, sy1+1)]
+    z = session.active_z_level
+    data = [[session.map_obj.get(x, y, z=z) for x in range(sx0, sx1+1)] for y in range(sy0, sy1+1)]
 
     # Rotate
     rotated = rotate_selection_90(data)
@@ -64,7 +68,7 @@ def handle_rotate_selection_action(session, manager, action=None):
     # Clear old area
     for y in range(sy0, sy1+1):
         for x in range(sx0, sx1+1):
-            session.map_obj.set(x, y, 0) # Clear to void
+            session.map_obj.set(x, y, 0, z=z) # Clear to void
 
     # Calculate center
     cx = sx0 + w / 2
@@ -75,7 +79,7 @@ def handle_rotate_selection_action(session, manager, action=None):
     # Paste rotated
     for dy, row in enumerate(rotated):
         for dx, val in enumerate(row):
-            session.map_obj.set(nx + dx, ny + dy, val)
+            session.map_obj.set(nx + dx, ny + dy, val, z=z)
 
     # Update selection
     session.selection_start = (nx, ny)

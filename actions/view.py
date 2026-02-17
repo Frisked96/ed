@@ -33,6 +33,17 @@ def handle_move_cursor(session, manager, action=None):
     if session.cursor_y >= session.camera_y + session.view_height:
         session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.cursor_y - session.view_height + 1))
 
+def handle_layer_change(session, manager, action=None):
+    if action == 'layer_up':
+        session.active_z_level += 1
+    elif action == 'layer_down':
+        session.active_z_level = max(0, session.active_z_level - 1)
+
+    if hasattr(manager.current_state, 'renderer'):
+        manager.current_state.renderer.invalidate_cache()
+
+    show_message(manager, f"Level: {session.active_z_level}", notify=True)
+
 def handle_zoom(session, manager, action=None):
     renderer = manager.flow.renderer
     old_ts = renderer.tile_size

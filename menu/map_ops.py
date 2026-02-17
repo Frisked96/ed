@@ -53,17 +53,11 @@ class LoadMapState(State):
             print(f"DEBUG: LoadMapState received filename: {filename}")
             if filename:
                 if os.path.exists(filename):
-                    from core import Map
+                    from map_io import load_map_from_file
                     try:
-                        with open(filename, "r") as f:
-                            lines = [line.rstrip("\n") for line in f]
-                        if lines:
-                            w = max(len(l) for l in lines); h = len(lines)
-                            m = Map(w, h)
-                            for y, line in enumerate(lines):
-                                for x, ch in enumerate(line):
-                                    m.set(x, y, REGISTRY.get_by_char(ch))
-                            print(f"DEBUG: Successfully loaded map {w}x{h}")
+                        m = load_map_from_file(filename)
+                        if m:
+                            print(f"DEBUG: Successfully loaded map {m.width}x{m.height}")
                             self.manager.pop() # Pop LoadMapState
                             self.callback(m)
                             return

@@ -5,11 +5,12 @@ from .utils import check_autosave, show_message
 
 def handle_place_tile(session, manager, action=None):
     ts = session.tool_state
+    z = session.active_z_level
     if ts.mode == 'place':
-        old_val = session.map_obj.get(session.cursor_x, session.cursor_y)
+        old_val = session.map_obj.get(session.cursor_x, session.cursor_y, z=z)
         if old_val != session.selected_tile_id:
             session.map_obj.push_undo()
-            place_tile_at(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
+            place_tile_at(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts, z=z)
             ts.edits_since_save += 1
             check_autosave(session, manager)
     elif ts.mode in ('line', 'rect', 'circle', 'pattern', 'select'):
@@ -25,14 +26,14 @@ def handle_place_tile(session, manager, action=None):
                 show_message(manager, "Area Selected", notify=True)
             elif ts.mode == 'line':
                 session.map_obj.push_undo()
-                draw_line(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts)
+                draw_line(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, ts.brush_size, ts.brush_shape, ts, z=z)
                 ts.start_point = None
                 ts.edits_since_save += 1
                 check_autosave(session, manager)
             elif ts.mode == 'rect':
                 def on_rect_confirm(filled):
                     session.map_obj.push_undo()
-                    draw_rectangle(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
+                    draw_rectangle(session.map_obj, ts.start_point[0], ts.start_point[1], session.cursor_x, session.cursor_y, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts, z=z)
                     ts.start_point = None
                     ts.edits_since_save += 1
                     check_autosave(session, manager)
@@ -47,7 +48,7 @@ def handle_place_tile(session, manager, action=None):
                 def on_circle_confirm(filled):
                     session.map_obj.push_undo()
                     radius = int(get_distance(ts.start_point, (session.cursor_x, session.cursor_y)))
-                    draw_circle(session.map_obj, ts.start_point[0], ts.start_point[1], radius, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts)
+                    draw_circle(session.map_obj, ts.start_point[0], ts.start_point[1], radius, session.selected_tile_id, filled, ts.brush_size, ts.brush_shape, ts, z=z)
                     ts.start_point = None
                     ts.edits_since_save += 1
                     check_autosave(session, manager)
@@ -60,10 +61,11 @@ def handle_place_tile(session, manager, action=None):
                     manager.flow.push_confirmation("Filled? (y/n): ", on_circle_confirm)
 
 def handle_flood_fill(session, manager, action=None):
-    old_char = session.map_obj.get(session.cursor_x, session.cursor_y)
+    z = session.active_z_level
+    old_char = session.map_obj.get(session.cursor_x, session.cursor_y, z=z)
     if old_char != session.selected_tile_id:
         session.map_obj.push_undo()
-        flood_fill(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id)
+        flood_fill(session.map_obj, session.cursor_x, session.cursor_y, session.selected_tile_id, z=z)
         session.tool_state.edits_since_save += 1
         check_autosave(session, manager)
 

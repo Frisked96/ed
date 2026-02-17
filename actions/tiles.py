@@ -32,10 +32,11 @@ def handle_replace_all(session, manager, action=None):
                     if old_id != new_id:
                         session.map_obj.push_undo()
                         cnt = 0
+                        z = session.active_z_level
                         for y in range(session.map_obj.height):
                             for x in range(session.map_obj.width):
-                                if session.map_obj.get(x, y) == old_id:
-                                    session.map_obj.set(x, y, new_id)
+                                if session.map_obj.get(x, y, z=z) == old_id:
+                                    session.map_obj.set(x, y, new_id, z=z)
                                     cnt += 1
                         session.tool_state.edits_since_save += 1
                         check_autosave(session, manager)

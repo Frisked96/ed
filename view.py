@@ -297,16 +297,34 @@ class Renderer:
         start_x = cx * self.chunk_size
         start_y = cy * self.chunk_size
         
-        # Get slice of map data
-        data = session.map_obj.data[start_y : start_y + self.chunk_size, start_x : start_x + self.chunk_size]
+        z = session.active_z_level
         
-        for y_rel, row in enumerate(data):
-            py = y_rel * ts
-            for x_rel, tid in enumerate(row):
-                px = x_rel * ts
-                glyph = self.get_glyph(tid)
-                if glyph:
-                    surf.blit(glyph, (px, py))
+        # Layers to draw: previous level (ghosted), current level (normal)
+        layers_to_draw = []
+        if z > 0:
+            layers_to_draw.append((z - 1, 80)) # Ghost previous level
+        layers_to_draw.append((z, 255))      # Current level
+
+        for layer_z, alpha in layers_to_draw:
+            if layer_z not in session.map_obj.layers:
+                continue
+
+            data = session.map_obj.layers[layer_z][start_y : start_y + self.chunk_size, start_x : start_x + self.chunk_size]
+
+            for y_rel, row in enumerate(data):
+                py = y_rel * ts
+                for x_rel, tid in enumerate(row):
+                    if tid == 0: continue
+
+                    px = x_rel * ts
+                    glyph = self.get_glyph(tid)
+                    if glyph:
+                        if alpha < 255:
+                            temp = glyph.copy()
+                            temp.set_alpha(alpha)
+                            surf.blit(temp, (px, py))
+                        else:
+                            surf.blit(glyph, (px, py))
         
         return surf
 

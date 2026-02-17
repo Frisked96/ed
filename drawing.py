@@ -7,7 +7,7 @@ def apply_autotiling(map_obj, x, y, base_tile_id, _rules):
     # For now, just return the base tile
     return base_tile_id
 
-def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_state=None):
+def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_state=None, z=0):
     def final_tile(cx, cy, base):
         if tool_state and tool_state.auto_tiling:
             return apply_autotiling(map_obj, cx, cy, base, tool_state.tiling_rules)
@@ -22,9 +22,9 @@ def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_s
             for dx in range(w):
                 if brush_shape[dy][dx]:
                     nx, ny = x + dx - off_x, y + dy - off_y
-                    map_obj.set(nx, ny, final_tile(nx, ny, tile_id))
+                    map_obj.set(nx, ny, final_tile(nx, ny, tile_id), z=z)
     elif brush_size <= 1:
-        map_obj.set(x, y, final_tile(x, y, tile_id))
+        map_obj.set(x, y, final_tile(x, y, tile_id), z=z)
     else:
         offset = brush_size // 2
         y0, y1 = max(0, y - offset), min(map_obj.height, y + offset + 1)
@@ -33,10 +33,10 @@ def place_tile_at(map_obj, x, y, tile_id, brush_size=1, brush_shape=None, tool_s
         # We must call map_obj.set to trigger callbacks for macros
         for by in range(y0, y1):
             for bx in range(x0, x1):
-                map_obj.set(bx, by, final_tile(bx, by, tile_id))
+                map_obj.set(bx, by, final_tile(bx, by, tile_id), z=z)
 
-def flood_fill(map_obj, x, y, new_tile_id):
-    old_tile_id = map_obj.get(x, y)
+def flood_fill(map_obj, x, y, new_tile_id, z=0):
+    old_tile_id = map_obj.get(x, y, z=z)
     if old_tile_id is None or old_tile_id == new_tile_id: return
 
     queue = deque([(x, y)])
@@ -44,11 +44,11 @@ def flood_fill(map_obj, x, y, new_tile_id):
 
     while queue:
         cx, cy = queue.popleft()
-        map_obj.set(cx, cy, new_tile_id)
+        map_obj.set(cx, cy, new_tile_id, z=z)
 
         for nx, ny in [(cx+1, cy), (cx-1, cy), (cx, cy+1), (cx, cy-1)]:
             if map_obj.is_inside(nx, ny) and (nx, ny) not in visited:
-                if map_obj.get(nx, ny) == old_tile_id:
+                if map_obj.get(nx, ny, z=z) == old_tile_id:
                     visited.add((nx, ny))
                     queue.append((nx, ny))
 
@@ -73,9 +73,9 @@ def get_line_points(x0, y0, x1, y1):
             y += sy
     return points
 
-def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, tool_state=None):
+def draw_line(map_obj, x0, y0, x1, y1, tile_id, brush_size=1, brush_shape=None, tool_state=None, z=0):
     for x, y in get_line_points(x0, y0, x1, y1):
-        place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+        place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state, z=z)
 
 def get_rect_points(x0, y0, x1, y1, filled=False):
     points = []
@@ -95,16 +95,16 @@ def get_rect_points(x0, y0, x1, y1, filled=False):
             points.append((max_x, y))
     return points
 
-def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
+def draw_rectangle(map_obj, x0, y0, x1, y1, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None, z=0):
     if filled:
         min_x, max_x = (x0, x1) if x0 < x1 else (x1, x0)
         min_y, max_y = (y0, y1) if y0 < y1 else (y1, y0)
         for ry in range(min_y, max_y + 1):
             for rx in range(min_x, max_x + 1):
-                map_obj.set(rx, ry, tile_id)
+                map_obj.set(rx, ry, tile_id, z=z)
     else:
         for x, y in get_rect_points(x0, y0, x1, y1, filled=False):
-            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state, z=z)
 
 def get_circle_points(cx, cy, radius, filled=False):
     points = []
@@ -136,17 +136,17 @@ def get_circle_points(cx, cy, radius, filled=False):
                 err += 2*(y - x) + 1
     return points
 
-def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None):
+def draw_circle(map_obj, cx, cy, radius, tile_id, filled, brush_size=1, brush_shape=None, tool_state=None, z=0):
     if filled:
         y0, y1 = max(0, cy - radius), min(map_obj.height, cy + radius + 1)
         x0, x1 = max(0, cx - radius), min(map_obj.width, cx + radius + 1)
         for ry in range(y0, y1):
             for rx in range(x0, x1):
                 if (rx - cx)**2 + (ry - cy)**2 <= radius**2:
-                    map_obj.set(rx, ry, tile_id)
+                    map_obj.set(rx, ry, tile_id, z=z)
     else:
         for x, y in get_circle_points(cx, cy, radius, filled=False):
-            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state)
+            place_tile_at(map_obj, x, y, tile_id, brush_size, brush_shape, tool_state, z=z)
 
 def draw_pattern_rectangle(map_obj, x0, y0, x1, y1, pattern):
     # Pattern also needs to be updated to support IDs if it's not already

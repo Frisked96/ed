@@ -32,6 +32,13 @@ class EditorState(State):
         # Initial resize to set viewport
         self._update_viewport()
 
+    def _change_level(self, delta):
+        new_z = max(0, self.session.active_z_level + delta)
+        if new_z != self.session.active_z_level:
+            self.session.active_z_level = new_z
+            self.labels['level_val'].set_text(str(new_z))
+            self.renderer.invalidate_cache()
+
     def _update_viewport(self):
         self.renderer.update_dimensions()
         # Reserve space for status bar at bottom (150px)
@@ -103,6 +110,12 @@ class EditorState(State):
         self.macro_play_btn = UIButton(pygame.Rect(270, 85, 80, 30), "PLAY", self.ui_manager, container=self.status_panel)
         self.macro_rec_btn = UIButton(pygame.Rect(360, 85, 80, 30), "REC", self.ui_manager, container=self.status_panel)
         self.macro_iter_btn = UIButton(pygame.Rect(450, 85, 80, 30), f"ITER: {self.session.tool_state.macro_iterations}", self.ui_manager, container=self.status_panel)
+
+        # Level Controls
+        self.labels['level_lbl'] = UILabel(pygame.Rect(540, 85, 60, 20), "LEVEL:", self.ui_manager, container=self.status_panel)
+        self.level_down_btn = UIButton(pygame.Rect(600, 85, 30, 30), "-", self.ui_manager, container=self.status_panel)
+        self.labels['level_val'] = UILabel(pygame.Rect(630, 85, 40, 30), str(self.session.active_z_level), self.ui_manager, container=self.status_panel)
+        self.level_up_btn = UIButton(pygame.Rect(670, 85, 30, 30), "+", self.ui_manager, container=self.status_panel)
 
         # Measurement / Sector Info
         self.labels['sector'] = UILabel(pygame.Rect(w - 450, 85, 220, 20), "SECTOR: --", self.ui_manager, container=self.status_panel, object_id="#unicode_label")
@@ -207,6 +220,10 @@ class EditorState(State):
             elif event.ui_element == self.macro_iter_btn:
                 from actions.macro import handle_macro_set_iterations
                 handle_macro_set_iterations(self.session, self.manager)
+            elif event.ui_element == self.level_down_btn:
+                self._change_level(-1)
+            elif event.ui_element == self.level_up_btn:
+                self._change_level(1)
 
         if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             if event.ui_element == self.macro_dropdown:
@@ -350,6 +367,9 @@ class EditorState(State):
             if len(ts.macros) != len(self.macro_dropdown.options_list) - (1 if "None" in self.macro_dropdown.options_list else 0):
                  self._rebuild_macro_ui()
             
+            if 'level_val' in self.labels:
+                self.labels['level_val'].set_text(str(self.session.active_z_level))
+
             # Sync selection (if it changed externally via context menu)
             curr_sel = self.macro_dropdown.selected_option
             target_sel = ts.selected_macro or "None"

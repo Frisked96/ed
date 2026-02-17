@@ -70,12 +70,13 @@ def handle_macro_play(session, manager, action=None):
                 iterations = 1
 
     session.map_obj.push_undo()
+    z = session.active_z_level
     for i in range(iterations):
         base_x = start_x + i * ts.macro_offset[0]
         base_y = start_y + i * ts.macro_offset[1]
         
         for dx, dy, tid in tiles:
-            session.map_obj.set(base_x + dx, base_y + dy, tid)
+            session.map_obj.set(base_x + dx, base_y + dy, tid, z=z)
     
     show_message(manager, f"Macro '{ts.selected_macro}' played {iterations} times", notify=True)
 

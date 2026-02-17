@@ -3,7 +3,11 @@
     "id": 1,
     "char": ".",
     "name": "Floor",
-    "color": [169, 169, 169],
+    "color": [
+      169,
+      169,
+      169
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -14,7 +18,11 @@
     "id": 2,
     "char": "#",
     "name": "Solid Wall",
-    "color": [120, 120, 120],
+    "color": [
+      120,
+      120,
+      120
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -25,7 +33,11 @@
     "id": 3,
     "char": "~",
     "name": "Water",
-    "color": [0, 191, 255],
+    "color": [
+      0,
+      191,
+      255
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -38,7 +50,11 @@
     "id": 4,
     "char": "T",
     "name": "Tree",
-    "color": [34, 139, 34],
+    "color": [
+      34,
+      139,
+      34
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": false,
@@ -49,7 +65,11 @@
     "id": 5,
     "char": "G",
     "name": "Grass",
-    "color": [50, 205, 50],
+    "color": [
+      50,
+      205,
+      50
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -60,7 +80,11 @@
     "id": 6,
     "char": "@",
     "name": "Player Spawn",
-    "color": [255, 255, 0],
+    "color": [
+      255,
+      255,
+      0
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": false,
@@ -69,9 +93,13 @@
   },
   {
     "id": 7,
-    "char": "\u2500",
+    "char": "─",
     "name": "Wall (Horizontal)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -80,9 +108,13 @@
   },
   {
     "id": 8,
-    "char": "\u2502",
+    "char": "│",
     "name": "Wall (Vertical)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -91,9 +123,13 @@
   },
   {
     "id": 9,
-    "char": "\u250c",
+    "char": "┌",
     "name": "Corner (Top-Left)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -102,9 +138,13 @@
   },
   {
     "id": 10,
-    "char": "\u2510",
+    "char": "┐",
     "name": "Corner (Top-Right)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -113,9 +153,13 @@
   },
   {
     "id": 11,
-    "char": "\u2514",
+    "char": "└",
     "name": "Corner (Bot-Left)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -124,9 +168,13 @@
   },
   {
     "id": 12,
-    "char": "\u2518",
+    "char": "┘",
     "name": "Corner (Bot-Right)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -135,9 +183,13 @@
   },
   {
     "id": 13,
-    "char": "\u2550",
+    "char": "═",
     "name": "Dbl Wall (Horiz)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -146,9 +198,13 @@
   },
   {
     "id": 14,
-    "char": "\u2551",
+    "char": "║",
     "name": "Dbl Wall (Vert)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -157,9 +213,13 @@
   },
   {
     "id": 15,
-    "char": "\u2554",
+    "char": "╔",
     "name": "Dbl Corner (TL)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -168,9 +228,13 @@
   },
   {
     "id": 16,
-    "char": "\u2557",
+    "char": "╗",
     "name": "Dbl Corner (TR)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -179,9 +243,13 @@
   },
   {
     "id": 17,
-    "char": "\u255a",
+    "char": "╚",
     "name": "Dbl Corner (BL)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -190,9 +258,13 @@
   },
   {
     "id": 18,
-    "char": "\u255d",
+    "char": "╝",
     "name": "Dbl Corner (BR)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -203,29 +275,45 @@
     "id": 19,
     "char": "+",
     "name": "Door (Closed)",
-    "color": [139, 69, 19],
+    "color": [
+      139,
+      69,
+      19
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
-    "properties": {"openable": true},
+    "properties": {
+      "openable": true
+    },
     "animation": null
   },
   {
     "id": 20,
     "char": "/",
     "name": "Door (Open)",
-    "color": [139, 69, 19],
+    "color": [
+      139,
+      69,
+      19
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
-    "properties": {"openable": true},
+    "properties": {
+      "openable": true
+    },
     "animation": null
   },
   {
     "id": 21,
     "char": "<",
     "name": "Stairs Up",
-    "color": [255, 255, 255],
+    "color": [
+      255,
+      255,
+      255
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -236,7 +324,11 @@
     "id": 22,
     "char": ">",
     "name": "Stairs Down",
-    "color": [255, 255, 255],
+    "color": [
+      255,
+      255,
+      255
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -247,7 +339,11 @@
     "id": 23,
     "char": "*",
     "name": "Treasure",
-    "color": [255, 215, 0],
+    "color": [
+      255,
+      215,
+      0
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -256,9 +352,13 @@
   },
   {
     "id": 24,
-    "char": "\u2591",
+    "char": "░",
     "name": "Shade (Light)",
-    "color": [100, 100, 100],
+    "color": [
+      100,
+      100,
+      100
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -267,9 +367,13 @@
   },
   {
     "id": 25,
-    "char": "\u2592",
+    "char": "▒",
     "name": "Shade (Medium)",
-    "color": [100, 100, 100],
+    "color": [
+      100,
+      100,
+      100
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -278,9 +382,13 @@
   },
   {
     "id": 26,
-    "char": "\u2593",
+    "char": "▓",
     "name": "Shade (Dark)",
-    "color": [100, 100, 100],
+    "color": [
+      100,
+      100,
+      100
+    ],
     "bg_color": null,
     "blocks_movement": false,
     "blocks_sight": false,
@@ -289,9 +397,13 @@
   },
   {
     "id": 27,
-    "char": "\u251c",
+    "char": "├",
     "name": "T-Junct (Right)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -300,9 +412,13 @@
   },
   {
     "id": 28,
-    "char": "\u2524",
+    "char": "┤",
     "name": "T-Junct (Left)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -311,9 +427,13 @@
   },
   {
     "id": 29,
-    "char": "\u252c",
+    "char": "┬",
     "name": "T-Junct (Down)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -322,9 +442,13 @@
   },
   {
     "id": 30,
-    "char": "\u2534",
+    "char": "┴",
     "name": "T-Junct (Up)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -333,9 +457,13 @@
   },
   {
     "id": 31,
-    "char": "\u253c",
+    "char": "┼",
     "name": "Intersection (+)",
-    "color": [200, 200, 200],
+    "color": [
+      200,
+      200,
+      200
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -344,9 +472,13 @@
   },
   {
     "id": 32,
-    "char": "\u2560",
+    "char": "╠",
     "name": "Dbl T-Junct (R)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -355,9 +487,13 @@
   },
   {
     "id": 33,
-    "char": "\u2563",
+    "char": "╣",
     "name": "Dbl T-Junct (L)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -366,9 +502,13 @@
   },
   {
     "id": 34,
-    "char": "\u2566",
+    "char": "╦",
     "name": "Dbl T-Junct (D)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -377,9 +517,13 @@
   },
   {
     "id": 35,
-    "char": "\u2569",
+    "char": "╩",
     "name": "Dbl T-Junct (U)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
@@ -388,12 +532,2041 @@
   },
   {
     "id": 36,
-    "char": "\u256c",
+    "char": "╬",
     "name": "Dbl Intersect (+)",
-    "color": [220, 220, 220],
+    "color": [
+      220,
+      220,
+      220
+    ],
     "bg_color": null,
     "blocks_movement": true,
     "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 37,
+    "char": "━",
+    "name": "Box 2501",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 38,
+    "char": "┃",
+    "name": "Box 2503",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 39,
+    "char": "┄",
+    "name": "Box 2504",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 40,
+    "char": "┅",
+    "name": "Box 2505",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 41,
+    "char": "┆",
+    "name": "Box 2506",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 42,
+    "char": "┇",
+    "name": "Box 2507",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 43,
+    "char": "┈",
+    "name": "Box 2508",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 44,
+    "char": "┉",
+    "name": "Box 2509",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 45,
+    "char": "┊",
+    "name": "Box 250A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 46,
+    "char": "┋",
+    "name": "Box 250B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 47,
+    "char": "┍",
+    "name": "Box 250D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 48,
+    "char": "┎",
+    "name": "Box 250E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 49,
+    "char": "┏",
+    "name": "Box 250F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 50,
+    "char": "┑",
+    "name": "Box 2511",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 51,
+    "char": "┒",
+    "name": "Box 2512",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 52,
+    "char": "┓",
+    "name": "Box 2513",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 53,
+    "char": "┕",
+    "name": "Box 2515",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 54,
+    "char": "┖",
+    "name": "Box 2516",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 55,
+    "char": "┗",
+    "name": "Box 2517",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 56,
+    "char": "┙",
+    "name": "Box 2519",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 57,
+    "char": "┚",
+    "name": "Box 251A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 58,
+    "char": "┛",
+    "name": "Box 251B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 59,
+    "char": "┝",
+    "name": "Box 251D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 60,
+    "char": "┞",
+    "name": "Box 251E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 61,
+    "char": "┟",
+    "name": "Box 251F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 62,
+    "char": "┠",
+    "name": "Box 2520",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 63,
+    "char": "┡",
+    "name": "Box 2521",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 64,
+    "char": "┢",
+    "name": "Box 2522",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 65,
+    "char": "┣",
+    "name": "Box 2523",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 66,
+    "char": "┥",
+    "name": "Box 2525",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 67,
+    "char": "┦",
+    "name": "Box 2526",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 68,
+    "char": "┧",
+    "name": "Box 2527",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 69,
+    "char": "┨",
+    "name": "Box 2528",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 70,
+    "char": "┩",
+    "name": "Box 2529",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 71,
+    "char": "┪",
+    "name": "Box 252A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 72,
+    "char": "┫",
+    "name": "Box 252B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 73,
+    "char": "┭",
+    "name": "Box 252D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 74,
+    "char": "┮",
+    "name": "Box 252E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 75,
+    "char": "┯",
+    "name": "Box 252F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 76,
+    "char": "┰",
+    "name": "Box 2530",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 77,
+    "char": "┱",
+    "name": "Box 2531",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 78,
+    "char": "┲",
+    "name": "Box 2532",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 79,
+    "char": "┳",
+    "name": "Box 2533",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 80,
+    "char": "┵",
+    "name": "Box 2535",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 81,
+    "char": "┶",
+    "name": "Box 2536",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 82,
+    "char": "┷",
+    "name": "Box 2537",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 83,
+    "char": "┸",
+    "name": "Box 2538",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 84,
+    "char": "┹",
+    "name": "Box 2539",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 85,
+    "char": "┺",
+    "name": "Box 253A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 86,
+    "char": "┻",
+    "name": "Box 253B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 87,
+    "char": "┽",
+    "name": "Box 253D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 88,
+    "char": "┾",
+    "name": "Box 253E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 89,
+    "char": "┿",
+    "name": "Box 253F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 90,
+    "char": "╀",
+    "name": "Box 2540",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 91,
+    "char": "╁",
+    "name": "Box 2541",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 92,
+    "char": "╂",
+    "name": "Box 2542",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 93,
+    "char": "╃",
+    "name": "Box 2543",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 94,
+    "char": "╄",
+    "name": "Box 2544",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 95,
+    "char": "╅",
+    "name": "Box 2545",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 96,
+    "char": "╆",
+    "name": "Box 2546",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 97,
+    "char": "╇",
+    "name": "Box 2547",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 98,
+    "char": "╈",
+    "name": "Box 2548",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 99,
+    "char": "╉",
+    "name": "Box 2549",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 100,
+    "char": "╊",
+    "name": "Box 254A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 101,
+    "char": "╋",
+    "name": "Box 254B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 102,
+    "char": "╌",
+    "name": "Box 254C",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 103,
+    "char": "╍",
+    "name": "Box 254D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 104,
+    "char": "╎",
+    "name": "Box 254E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 105,
+    "char": "╏",
+    "name": "Box 254F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 106,
+    "char": "╒",
+    "name": "Box 2552",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 107,
+    "char": "╓",
+    "name": "Box 2553",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 108,
+    "char": "╕",
+    "name": "Box 2555",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 109,
+    "char": "╖",
+    "name": "Box 2556",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 110,
+    "char": "╘",
+    "name": "Box 2558",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 111,
+    "char": "╙",
+    "name": "Box 2559",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 112,
+    "char": "╛",
+    "name": "Box 255B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 113,
+    "char": "╜",
+    "name": "Box 255C",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 114,
+    "char": "╞",
+    "name": "Box 255E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 115,
+    "char": "╟",
+    "name": "Box 255F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 116,
+    "char": "╡",
+    "name": "Box 2561",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 117,
+    "char": "╢",
+    "name": "Box 2562",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 118,
+    "char": "╤",
+    "name": "Box 2564",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 119,
+    "char": "╥",
+    "name": "Box 2565",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 120,
+    "char": "╧",
+    "name": "Box 2567",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 121,
+    "char": "╨",
+    "name": "Box 2568",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 122,
+    "char": "╪",
+    "name": "Box 256A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 123,
+    "char": "╫",
+    "name": "Box 256B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 124,
+    "char": "╭",
+    "name": "Box 256D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 125,
+    "char": "╮",
+    "name": "Box 256E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 126,
+    "char": "╯",
+    "name": "Box 256F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 127,
+    "char": "╰",
+    "name": "Box 2570",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 128,
+    "char": "╱",
+    "name": "Box 2571",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 129,
+    "char": "╲",
+    "name": "Box 2572",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 130,
+    "char": "╳",
+    "name": "Box 2573",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 131,
+    "char": "╴",
+    "name": "Box 2574",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 132,
+    "char": "╵",
+    "name": "Box 2575",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 133,
+    "char": "╶",
+    "name": "Box 2576",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 134,
+    "char": "╷",
+    "name": "Box 2577",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 135,
+    "char": "╸",
+    "name": "Box 2578",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 136,
+    "char": "╹",
+    "name": "Box 2579",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 137,
+    "char": "╺",
+    "name": "Box 257A",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 138,
+    "char": "╻",
+    "name": "Box 257B",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 139,
+    "char": "╼",
+    "name": "Box 257C",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 140,
+    "char": "╽",
+    "name": "Box 257D",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 141,
+    "char": "╾",
+    "name": "Box 257E",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 142,
+    "char": "╿",
+    "name": "Box 257F",
+    "color": [
+      200,
+      200,
+      200
+    ],
+    "bg_color": null,
+    "blocks_movement": true,
+    "blocks_sight": true,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 143,
+    "char": "▀",
+    "name": "Block 2580",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 144,
+    "char": "▁",
+    "name": "Block 2581",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 145,
+    "char": "▂",
+    "name": "Block 2582",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 146,
+    "char": "▃",
+    "name": "Block 2583",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 147,
+    "char": "▄",
+    "name": "Block 2584",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 148,
+    "char": "▅",
+    "name": "Block 2585",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 149,
+    "char": "▆",
+    "name": "Block 2586",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 150,
+    "char": "▇",
+    "name": "Block 2587",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 151,
+    "char": "█",
+    "name": "Block 2588",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 152,
+    "char": "▉",
+    "name": "Block 2589",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 153,
+    "char": "▊",
+    "name": "Block 258A",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 154,
+    "char": "▋",
+    "name": "Block 258B",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 155,
+    "char": "▌",
+    "name": "Block 258C",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 156,
+    "char": "▍",
+    "name": "Block 258D",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 157,
+    "char": "▎",
+    "name": "Block 258E",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 158,
+    "char": "▏",
+    "name": "Block 258F",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 159,
+    "char": "▐",
+    "name": "Block 2590",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 160,
+    "char": "▔",
+    "name": "Block 2594",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 161,
+    "char": "▕",
+    "name": "Block 2595",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 162,
+    "char": "▖",
+    "name": "Block 2596",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 163,
+    "char": "▗",
+    "name": "Block 2597",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 164,
+    "char": "▘",
+    "name": "Block 2598",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 165,
+    "char": "▙",
+    "name": "Block 2599",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 166,
+    "char": "▚",
+    "name": "Block 259A",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 167,
+    "char": "▛",
+    "name": "Block 259B",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 168,
+    "char": "▜",
+    "name": "Block 259C",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 169,
+    "char": "▝",
+    "name": "Block 259D",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 170,
+    "char": "▞",
+    "name": "Block 259E",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
+  },
+  {
+    "id": 171,
+    "char": "▟",
+    "name": "Block 259F",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
     "properties": {},
     "animation": null
   }

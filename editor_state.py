@@ -124,7 +124,7 @@ class EditorState(State):
             return
 
         w, h = self.renderer.screen.get_size()
-        win_w, win_h = 420, h - 150
+        win_w, win_h = 320, h - 100
 
         self.palette_window = UIWindow(
             rect=pygame.Rect(w - win_w - 20, 20, win_w, win_h),
@@ -141,15 +141,13 @@ class EditorState(State):
         )
 
         tiles = REGISTRY.get_all()
-        # 2-Column List view: Icon + Name
-        cols = 2
-        col_width = (win_w - 40) // cols
+        # Grid view: Icon only with tooltips
+        cols = 6
         tile_size = 32
-        padding = 5
-        row_height = tile_size + padding
+        padding = 8
         
         num_rows = (len(tiles) + cols - 1) // cols
-        scroll_h = num_rows * row_height + padding
+        scroll_h = num_rows * (tile_size + padding) + padding
 
         container.set_scrollable_area_dimensions((win_w - 50, scroll_h))
         
@@ -157,12 +155,9 @@ class EditorState(State):
             c = i % cols
             r = i // cols
             
-            px = padding + c * col_width
-            py = padding + r * row_height
+            px = padding + c * (tile_size + padding)
+            py = padding + r * (tile_size + padding)
 
-            # Use color if available
-            color_hex = "#FFFFFF"
-            
             # Generate glyph surface (32x32)
             base_surf = self.renderer.get_glyph(tile.id)
             if base_surf:
@@ -186,17 +181,8 @@ class EditorState(State):
                 container=container,
                 object_id="#palette_icon"
             )
+            btn.tool_tip_text = f"{tile.name} ([{tile.char}])"
             self.palette_buttons[btn] = tile.id
-            
-            # Create Label
-            label_text = f"{tile.name}"
-            lbl = UILabel(
-                relative_rect=pygame.Rect(px + tile_size + 5, py, col_width - tile_size - 10, tile_size),
-                text=label_text,
-                manager=self.ui_manager,
-                container=container,
-                object_id="#palette_label"
-            )
 
 
     def handle_event(self, event):

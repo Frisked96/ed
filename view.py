@@ -65,6 +65,76 @@ class Renderer:
             s.fill(color)
             return s
 
+        # Draw partial blocks (U+2580 - U+258F)
+        if '▀' <= char <= '╿' or ' ' <= char <= '▟':
+            # Block elements range: 2580-259F
+            # We already handle █ (2588)
+            # 2580 ▀ Upper half block
+            # 2584 ▄ Lower half block
+            # 258C ▌ Left half block
+            # 2590 ▐ Right half block
+            # 2591-2593 shades (handled above)
+            
+            # Helper for block rendering
+            def draw_block(x_fracs, y_fracs):
+                # x_fracs/y_fracs are (start, end) where 0.0 is top/left and 1.0 is bottom/right
+                rx = int(x_fracs[0] * ts)
+                ry = int(y_fracs[0] * ts)
+                rw = int((x_fracs[1] - x_fracs[0]) * ts)
+                rh = int((y_fracs[1] - y_fracs[0]) * ts)
+                if rw > 0 and rh > 0:
+                    pygame.draw.rect(s, color, (rx, ry, rw, rh))
+
+            if char == '▀': draw_block((0, 1), (0, 0.5))
+            elif char == '▂': draw_block((0, 1), (0.875, 1))
+            elif char == '▃': draw_block((0, 1), (0.75, 1))
+            elif char == '▄': draw_block((0, 1), (0.5, 1))
+            elif char == '▅': draw_block((0, 1), (0.375, 1))
+            elif char == '▆': draw_block((0, 1), (0.25, 1))
+            elif char == '▇': draw_block((0, 1), (0.125, 1))
+            elif char == '█': draw_block((0, 1), (0, 1))
+            elif char == '▉': draw_block((0, 0.875), (0, 1))
+            elif char == '▊': draw_block((0, 0.75), (0, 1))
+            elif char == '▋': draw_block((0, 0.625), (0, 1))
+            elif char == '▌': draw_block((0, 0.5), (0, 1))
+            elif char == '▍': draw_block((0, 0.375), (0, 1))
+            elif char == '▎': draw_block((0, 0.25), (0, 1))
+            elif char == '▏': draw_block((0, 0.125), (0, 1))
+            elif char == '▐': draw_block((0.5, 1), (0, 1))
+            elif char == '▔': draw_block((0, 1), (0, 0.125))
+            elif char == '▕': draw_block((0.875, 1), (0, 1))
+            # Quadrants (2596 - 259F)
+            elif char == '▖': draw_block((0, 0.5), (0.5, 1))
+            elif char == '▗': draw_block((0.5, 1), (0.5, 1))
+            elif char == '▘': draw_block((0, 0.5), (0, 0.5))
+            elif char == '▙': 
+                draw_block((0, 0.5), (0, 1))
+                draw_block((0.5, 1), (0.5, 1))
+            elif char == '▚':
+                draw_block((0, 0.5), (0, 0.5))
+                draw_block((0.5, 1), (0.5, 1))
+            elif char == '▛':
+                draw_block((0, 0.5), (0, 1))
+                draw_block((0.5, 1), (0, 0.5))
+            elif char == '▜':
+                draw_block((0, 1), (0, 0.5))
+                draw_block((0.5, 1), (0.5, 1))
+            elif char == '▝': draw_block((0.5, 1), (0, 0.5))
+            elif char == '▞':
+                draw_block((0.5, 1), (0, 0.5))
+                draw_block((0, 0.5), (0.5, 1))
+            elif char == '▟':
+                draw_block((0.5, 1), (0, 1))
+                draw_block((0, 0.5), (0.5, 1))
+            
+            # If we matched one of these, return surface
+            if s.get_at((0,0)) != (0,0,0,0) or any(s.get_at((x,y)) != (0,0,0,0) for x in (0, ts-1) for y in (0, ts-1)):
+                # This is a bit weak check, better to just return if it was one of the chars
+                return s
+            # Let's use a more robust check:
+            if char in '▀▂▃▄▅▆▇█▉▊▋▌▍▎▏▐▔▕▖▗▘▙▚▛▜▝▞▟':
+                return s
+
         # Draw shades
         if char in ('░', '▒', '▓'):
             s.fill(bg_color if bg_color else (0, 0, 0, 0))
@@ -189,7 +259,7 @@ class Renderer:
             color = color_val
 
         # Try procedural rendering first for box/block/shade chars
-        if char in BOX_DRAWING_CHARS or char in ('█', '░', '▒', '▓'):
+        if char in BOX_DRAWING_CHARS or '▀' <= char <= '▟' or char in ('█', '░', '▒', '▓', '▔', '▕'):
             box_surf = self._render_box_char(char, color, bg_color)
             if box_surf:
                 self.glyph_cache[key] = box_surf

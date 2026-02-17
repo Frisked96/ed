@@ -1,14 +1,15 @@
 from .utils import show_message
 
 def handle_move_view(session, manager, action=None):
+    speed = getattr(session, 'camera_speed', 1)
     if action == 'move_view_up':
-        session.camera_y = max(0, session.camera_y - 1)
+        session.camera_y = max(0, session.camera_y - speed)
     elif action == 'move_view_down':
-        session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.camera_y + 1))
+        session.camera_y = max(0, min(session.map_obj.height - session.view_height, session.camera_y + speed))
     elif action == 'move_view_left':
-        session.camera_x = max(0, session.camera_x - 1)
+        session.camera_x = max(0, session.camera_x - speed)
     elif action == 'move_view_right':
-        session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.camera_x + 1))
+        session.camera_x = max(0, min(session.map_obj.width - session.view_width, session.camera_x + speed))
 
 def handle_move_cursor(session, manager, action=None):
     snap = session.tool_state.snap_size

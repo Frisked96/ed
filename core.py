@@ -164,6 +164,7 @@ class EditorSession:
         self.tool_state = ToolState(macros=macros, tiling_rules=tiling_rules)
         
         self.camera_x, self.camera_y = 0, 0
+        self.camera_speed = 2
         self.cursor_x, self.cursor_y = 0, 0
         
         # Default selection

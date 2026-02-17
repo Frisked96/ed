@@ -4,7 +4,7 @@ import time
 from utils import get_key_name, get_distance
 from drawing import get_line_points, get_rect_points, get_circle_points
 from tiles import REGISTRY
-from core import COLOR_MAP
+from colors import Colors
 
 # procedural box drawing
 BOX_DRAWING_CHARS = {
@@ -303,7 +303,7 @@ class Renderer:
         return s
 
     def clear(self):
-        self.screen.fill((0, 0, 0))
+        self.screen.fill(Colors.BLACK)
 
     def flip(self):
         pygame.display.flip()
@@ -316,7 +316,7 @@ class Renderer:
     def _render_chunk(self, session, cx, cy):
         ts = self.tile_size
         surf = pygame.Surface((self.chunk_size * ts, self.chunk_size * ts))
-        surf.fill((0, 0, 0))
+        surf.fill(Colors.BLACK)
         
         start_x = cx * self.chunk_size
         start_y = cy * self.chunk_size
@@ -502,7 +502,7 @@ class Renderer:
         cfg = session.tool_state.measurement_config
         grid_size = int(cfg.get('grid_size', 100))
         show_coords = cfg.get('show_coords', True)
-        color = cfg.get('color', (0, 255, 255))
+        color = cfg.get('color', Colors.CYAN)
         points = cfg.get('points', [])
         
         if grid_size <= 0: return
@@ -549,17 +549,17 @@ class Renderer:
                 py = (p[1] - cam_y) * self.tile_size + self.tile_size // 2
                 
                 if 0 <= px <= self.width and 0 <= py <= self.height:
-                    pygame.draw.circle(self.screen, (255, 100, 100), (int(px), int(py)), 5)
+                    pygame.draw.circle(self.screen, Colors.RED_LIGHT, (int(px), int(py)), 5)
                     
                     if last_p:
                         lpx = (last_p[0] - cam_x) * self.tile_size + self.tile_size // 2
                         lpy = (last_p[1] - cam_y) * self.tile_size + self.tile_size // 2
-                        pygame.draw.line(self.screen, (255, 100, 100), (int(lpx), int(lpy)), (int(px), int(py)), 2)
+                        pygame.draw.line(self.screen, Colors.RED_LIGHT, (int(lpx), int(lpy)), (int(px), int(py)), 2)
                         
                         dist = get_distance(last_p, p)
                         mid_x, mid_y = (lpx + px) // 2, (lpy + py) // 2
                         if 0 <= mid_x <= self.width and 0 <= mid_y <= self.height:
-                            d_surf = self.font.render(f"{dist:.1f}", True, (255, 200, 200))
+                            d_surf = self.font.render(f"{dist:.1f}", True, Colors.RED_VERY_LIGHT)
                             self.screen.blit(d_surf, (int(mid_x), int(mid_y)))
                 last_p = p
 
@@ -580,8 +580,8 @@ class Renderer:
             radius = int(get_distance((sx, sy), (cx, cy)))
             points = get_circle_points(sx, sy, radius, filled=False)
         
-        color = (255, 255, 0) # Yellow for preview
-        if ts.mode == 'select': color = (100, 100, 255) # Blue for selection
+        color = Colors.YELLOW # Yellow for preview
+        if ts.mode == 'select': color = Colors.BLUE_LIGHT # Blue for selection
         
         for px, py in points:
             if px < cam_x - 1 or py < cam_y - 1 or \

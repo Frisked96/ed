@@ -4,18 +4,10 @@ import sys
 import json
 import os
 import math
-from core import COLOR_MAP
+from colors import Colors
 
 def get_all_colors():
-    combined = dict(COLOR_MAP)
-    colors_path = os.path.join(os.getcwd(), 'colors.json')
-    if os.path.exists(colors_path):
-        try:
-            with open(colors_path, 'r') as f:
-                loaded = json.load(f)
-                combined.update(loaded)
-        except: pass
-    return combined
+    return Colors.all()
 
 def parse_color_name(name):
     # Returns an RGB tuple
@@ -28,15 +20,14 @@ def parse_color_name(name):
             return tuple(map(int, name.split(',')))
         except: pass
 
-    colors = get_all_colors()
-    return tuple(colors.get(name.lower(), (255, 255, 255)))
+    return Colors.get(name.lower(), Colors.WHITE)
 
 def get_color_name(rgb):
     if isinstance(rgb, str):
         return rgb
     
     try:
-        colors = get_all_colors()
+        colors = Colors.all()
         # Convert to list for comparison
         target = list(rgb)
         for name, val in colors.items():

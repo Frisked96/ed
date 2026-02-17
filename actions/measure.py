@@ -1,3 +1,4 @@
+from colors import Colors
 from .utils import show_message
 
 def handle_measurement(session, manager, action=None):
@@ -21,7 +22,7 @@ def handle_measurement_configure(session, manager, action=None):
     ts = session.tool_state
 
     # Prepare fields for FormState
-    color = ts.measurement_config.get('color', (0, 255, 255))
+    color = ts.measurement_config.get('color', Colors.CYAN)
     color_str = f"{color[0]},{color[1]},{color[2]}"
 
     fields = [

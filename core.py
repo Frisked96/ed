@@ -3,18 +3,10 @@ import random
 import numpy as np
 from collections import deque
 from tiles import REGISTRY, TileDefinition
+from colors import Colors
 
-# RGB Color Map
-COLOR_MAP = {
-    'black': (0, 0, 0),
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'yellow': (255, 255, 0),
-    'blue': (0, 0, 255),
-    'magenta': (255, 0, 255),
-    'cyan': (0, 255, 255),
-    'white': (255, 255, 255),
-}
+# RGB Color Map - Still here for backward compatibility, but uses Colors
+COLOR_MAP = Colors.all()
 
 class Map:
     def __init__(self, width, height, data=None, undo_stack=None, fill_tile_id=None):
@@ -155,7 +147,7 @@ class ToolState:
         self.measurement_config = {
             'grid_size': 100, 
             'show_coords': True, 
-            'color': (0, 255, 255),
+            'color': Colors.CYAN,
             'points': [] # List of (x, y)
         }
         self.show_palette = False

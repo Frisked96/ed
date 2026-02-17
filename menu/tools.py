@@ -1,6 +1,7 @@
 import pygame
 from state_engine import State
 from tiles import REGISTRY
+from colors import Colors
 
 class BrushDefineState(State):
     def __init__(self, manager, context, callback):
@@ -26,18 +27,18 @@ class BrushDefineState(State):
                 self.callback(None)
 
     def draw(self, surface):
-        self.context.screen.fill((0,0,0))
-        self.context.screen.blit(self.context.font.render(f"Brush {self.size}x{self.size} (Space=Toggle, Enter=Save)", True, (255,255,255)), (10,10))
+        self.context.screen.fill(Colors.BLACK)
+        self.context.screen.blit(self.context.font.render(f"Brush {self.size}x{self.size} (Space=Toggle, Enter=Save)", True, Colors.WHITE), (10,10))
         start_x, start_y = 50, 50
         cell_s = 30
         for r in range(self.size):
             for c in range(self.size):
                 rect = (start_x + c * cell_s, start_y + r * cell_s, cell_s, cell_s)
-                color = (200, 200, 200) if self.brush[r][c] else (50, 50, 50)
+                color = Colors.LIGHTGRAY if self.brush[r][c] else Colors.DARKGRAY
                 pygame.draw.rect(surface, color, rect)
-                pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+                pygame.draw.rect(surface, Colors.WHITE, rect, 1)
                 if r == self.by and c == self.bx:
-                    pygame.draw.rect(surface, (255, 0, 0), rect, 2)
+                    pygame.draw.rect(surface, Colors.RED, rect, 2)
 
 class PatternDefineState(State):
     def __init__(self, manager, context, size, callback):
@@ -64,17 +65,17 @@ class PatternDefineState(State):
                 self.pattern[self.by][self.bx] = event.unicode
 
     def draw(self, surface):
-        self.context.screen.fill((0,0,0))
-        self.context.screen.blit(self.context.font.render(f"Pattern {self.size}x{self.size} (Enter char, Enter=Save)", True, (255,255,255)), (10,10))
+        self.context.screen.fill(Colors.BLACK)
+        self.context.screen.blit(self.context.font.render(f"Pattern {self.size}x{self.size} (Enter char, Enter=Save)", True, Colors.WHITE), (10,10))
         start_x, start_y = 50, 50
         cell_s = 30
         for r in range(self.size):
             for c in range(self.size):
                 rect = (start_x + c * cell_s, start_y + r * cell_s, cell_s, cell_s)
-                pygame.draw.rect(surface, (50, 50, 50), rect)
-                pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+                pygame.draw.rect(surface, Colors.DARKGRAY, rect)
+                pygame.draw.rect(surface, Colors.WHITE, rect, 1)
                 if r == self.by and c == self.bx:
-                    pygame.draw.rect(surface, (255, 0, 0), rect, 2)
+                    pygame.draw.rect(surface, Colors.RED, rect, 2)
                 glyph = self.context.get_glyph(REGISTRY.get_by_char(self.pattern[r][c]))
                 if glyph:
                     surface.blit(glyph, (rect[0]+5, rect[1]+5))

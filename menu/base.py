@@ -5,6 +5,7 @@ from pygame_gui.windows import UIConfirmationDialog, UIMessageWindow
 from state_engine import State
 from collections import Counter
 from utils import get_key_name
+from colors import Colors
 
 def build_key_map(bindings):
     key_map = {}
@@ -311,7 +312,7 @@ class HelpState(State):
 
         html = "<font face='fira_code' size=4>"
         for title, lines in sections:
-            html += f"<br><b><font color='#00FFFF'>{title}</font></b><br>"
+            html += f"<br><b><font color='{Colors.get_color_name(Colors.CYAN)}'>{title}</font></b><br>"
             for line in lines:
                 html += line + "<br>"
         html += "</font>"

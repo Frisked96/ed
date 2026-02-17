@@ -16,6 +16,14 @@ BOX_DRAWING_CHARS = {
     '┬': (0, 1, 1, 1), '┴': (1, 1, 0, 1),
     '┼': (1, 1, 1, 1),
     
+    # Heavy - (Top, Right, Bottom, Left)
+    '━': (0, 3, 0, 3), '┃': (3, 0, 3, 0),
+    '┏': (0, 3, 3, 0), '┓': (0, 0, 3, 3),
+    '┗': (3, 3, 0, 0), '┛': (3, 0, 0, 3),
+    '┣': (3, 3, 3, 0), '┫': (3, 0, 3, 3),
+    '┳': (0, 3, 3, 3), '┻': (3, 3, 0, 3),
+    '╋': (3, 3, 3, 3),
+
     # Double - (Top, Right, Bottom, Left)
     '═': (0, 2, 0, 2), '║': (2, 0, 2, 0),
     '╔': (0, 2, 2, 0), '╗': (0, 0, 2, 2),
@@ -23,6 +31,25 @@ BOX_DRAWING_CHARS = {
     '╠': (2, 2, 2, 0), '╣': (2, 0, 2, 2),
     '╦': (0, 2, 2, 2), '╩': (2, 2, 0, 2),
     '╬': (2, 2, 2, 2),
+    
+    # Mixed Light/Heavy
+    '┍': (0, 3, 1, 0), '┎': (0, 1, 3, 0),
+    '┑': (0, 0, 1, 3), '┒': (0, 0, 3, 1),
+    '┕': (1, 3, 0, 0), '┖': (3, 1, 0, 0),
+    '┙': (1, 0, 0, 3), '┚': (3, 0, 0, 1),
+    '┝': (1, 3, 1, 0), '┞': (1, 1, 3, 0), '┟': (3, 1, 1, 0),
+    '┠': (3, 1, 3, 0), '┡': (1, 3, 3, 0), '┢': (3, 3, 1, 0),
+    '┥': (1, 0, 1, 3), '┦': (1, 0, 3, 1), '┧': (3, 0, 1, 1),
+    '┨': (3, 0, 3, 1), '┩': (1, 0, 3, 3), '┪': (3, 0, 1, 3),
+    '┭': (0, 3, 1, 1), '┮': (0, 1, 1, 3), '┯': (0, 3, 1, 3),
+    '┰': (0, 1, 3, 1), '┱': (0, 3, 3, 1), '┲': (0, 1, 3, 3),
+    '┵': (1, 1, 0, 3), '┶': (1, 3, 0, 1), '┷': (1, 3, 0, 3),
+    '┸': (3, 1, 0, 1), '┹': (1, 1, 0, 3), '┺': (3, 1, 0, 3),
+    # Single-ended
+    '╴': (0, 0, 0, 1), '╵': (1, 0, 0, 0), '╶': (0, 1, 0, 0), '╷': (0, 0, 1, 0),
+    '╸': (0, 0, 0, 3), '╹': (3, 0, 0, 0), '╺': (0, 3, 0, 0), '╻': (0, 0, 3, 0),
+    # Rounded (drawn as sharp for now to ensure connectivity)
+    '╭': (0, 1, 1, 0), '╮': (0, 0, 1, 1), '╯': (1, 0, 0, 1), '╰': (1, 1, 0, 0),
 }
 
 class Renderer:
@@ -60,20 +87,21 @@ class Renderer:
         ts = self.tile_size
         cx, cy = ts // 2, ts // 2
         
+        # Widths
+        sw = max(1, int(ts * 0.1))   # Single line
+        dw = max(3, int(ts * 0.3))   # Double line total
+        gap = max(1, int(ts * 0.1))  # Double line gap
+        hw = max(2, int(ts * 0.25))  # Heavy line
+        
         # Draw full block
         if char == '█':
             s.fill(color)
             return s
 
-        # Draw partial blocks (U+2580 - U+258F)
-        if '▀' <= char <= '╿' or ' ' <= char <= '▟':
+        # Draw partial blocks (U+2580 - U+259F)
+        if '\u2580' <= char <= '\u259f':
             # Block elements range: 2580-259F
             # We already handle █ (2588)
-            # 2580 ▀ Upper half block
-            # 2584 ▄ Lower half block
-            # 258C ▌ Left half block
-            # 2590 ▐ Right half block
-            # 2591-2593 shades (handled above)
             
             # Helper for block rendering
             def draw_block(x_fracs, y_fracs):
@@ -127,13 +155,7 @@ class Renderer:
                 draw_block((0.5, 1), (0, 1))
                 draw_block((0, 0.5), (0.5, 1))
             
-            # If we matched one of these, return surface
-            if s.get_at((0,0)) != (0,0,0,0) or any(s.get_at((x,y)) != (0,0,0,0) for x in (0, ts-1) for y in (0, ts-1)):
-                # This is a bit weak check, better to just return if it was one of the chars
-                return s
-            # Let's use a more robust check:
-            if char in '▀▂▃▄▅▆▇█▉▊▋▌▍▎▏▐▔▕▖▗▘▙▚▛▜▝▞▟':
-                return s
+            return s
 
         # Draw shades
         if char in ('░', '▒', '▓'):
@@ -146,8 +168,6 @@ class Renderer:
             # Draw a stipple pattern that fills the tile
             for y in range(ts):
                 for x in range(ts):
-                    # Use a stable pseudo-random check based on x, y to make it look like a shade
-                    # A simple checkerboard or bayer matrix would be better for tiling
                     if char == '▒': # Medium shade - checkerboard
                         if (x + y) % 2 == 0:
                             s.set_at((x, y), color)
@@ -159,39 +179,37 @@ class Renderer:
                             s.set_at((x, y), color)
             return s
             
+        # Diagonals
+        if char == '╱':
+            pygame.draw.line(s, color, (0, ts), (ts, 0), sw)
+            return s
+        elif char == '╲':
+            pygame.draw.line(s, color, (0, 0), (ts, ts), sw)
+            return s
+        elif char == '╳':
+            pygame.draw.line(s, color, (0, 0), (ts, ts), sw)
+            pygame.draw.line(s, color, (0, ts), (ts, 0), sw)
+            return s
+
         # Draw box lines
         dirs = BOX_DRAWING_CHARS.get(char)
         if not dirs:
             return None
             
-        # Widths
-        thickness = max(1, int(ts * 0.15)) # ~3px for 20
-        # For double lines, we draw two thinner lines or one thick one?
-        # Let's try drawing two thin lines with gap for double, single for single.
-        
-        # Single line width
-        sw = max(1, int(ts * 0.1))
-        # Double line total width
-        dw = max(3, int(ts * 0.3))
-        gap = max(1, int(ts * 0.1))
-        
         top, right, bottom, left = dirs
         
         # Helper for rects
         def draw_rect(r):
             pygame.draw.rect(s, color, r)
             
-        # Center block (intersection)
-        # We fill center based on max connectivity to avoid gaps
-        # If any is double, we might need a complex center.
-        # Simple approach: Draw arms into center.
-        
         # Top
         if top == 1:
             draw_rect((cx - sw//2, 0, sw, cy + sw//2))
         elif top == 2:
             draw_rect((cx - dw//2, 0, (dw-gap)//2, cy + dw//2))
             draw_rect((cx + gap//2, 0, (dw-gap)//2, cy + dw//2))
+        elif top == 3:
+            draw_rect((cx - hw//2, 0, hw, cy + hw//2))
 
         # Bottom
         if bottom == 1:
@@ -199,6 +217,8 @@ class Renderer:
         elif bottom == 2:
             draw_rect((cx - dw//2, cy - dw//2, (dw-gap)//2, ts - cy + dw//2))
             draw_rect((cx + gap//2, cy - dw//2, (dw-gap)//2, ts - cy + dw//2))
+        elif bottom == 3:
+            draw_rect((cx - hw//2, cy - hw//2, hw, ts - cy + hw//2))
 
         # Left
         if left == 1:
@@ -206,6 +226,8 @@ class Renderer:
         elif left == 2:
             draw_rect((0, cy - dw//2, cx + dw//2, (dw-gap)//2))
             draw_rect((0, cy + gap//2, cx + dw//2, (dw-gap)//2))
+        elif left == 3:
+            draw_rect((0, cy - hw//2, cx + hw//2, hw))
 
         # Right
         if right == 1:
@@ -213,6 +235,8 @@ class Renderer:
         elif right == 2:
             draw_rect((cx - dw//2, cy - dw//2, ts - cx + dw//2, (dw-gap)//2))
             draw_rect((cx - dw//2, cy + gap//2, ts - cx + dw//2, (dw-gap)//2))
+        elif right == 3:
+            draw_rect((cx - hw//2, cy - hw//2, ts - cx + hw//2, hw))
             
         return s
 
@@ -259,7 +283,7 @@ class Renderer:
             color = color_val
 
         # Try procedural rendering first for box/block/shade chars
-        if char in BOX_DRAWING_CHARS or '▀' <= char <= '▟' or char in ('█', '░', '▒', '▓', '▔', '▕'):
+        if char in BOX_DRAWING_CHARS or '\u2500' <= char <= '\u259f' or char in ('█', '░', '▒', '▓', '▔', '▕'):
             box_surf = self._render_box_char(char, color, bg_color)
             if box_surf:
                 self.glyph_cache[key] = box_surf

@@ -357,6 +357,7 @@ class FormState(State):
         )
         
         y = 20
+        first_entry = None
         for label, val, key in self.fields_data:
             UILabel(
                 relative_rect=pygame.Rect(20, y, 150, 30),
@@ -372,7 +373,13 @@ class FormState(State):
                 initial_text=str(val)
             )
             self.entry_map[key] = entry
+            if not first_entry:
+                first_entry = entry
             y += 40
+
+        if first_entry:
+            first_entry.focus()
+        pygame.key.start_text_input()
 
         self.apply_btn = UIButton(
             relative_rect=pygame.Rect(80, y + 10, 100, 30),

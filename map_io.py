@@ -3,7 +3,7 @@ import json
 import pygame
 import numpy as np
 from tiles import REGISTRY
-from core import COLOR_MAP
+from colors import Colors
 
 def load_config():
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
@@ -119,11 +119,11 @@ def export_to_image(map_data, _tile_colors, filename, tile_size=8):
     unique_ids = np.unique(map_data)
     for tid in unique_ids:
         tile = REGISTRY.get(tid)
-        color = (0, 0, 0)
+        color = Colors.BLACK
         if tile:
             c = tile.color
             if isinstance(c, str):
-                color = COLOR_MAP.get(c.lower(), (255, 255, 255))
+                color = Colors.get(c.lower(), Colors.WHITE)
             else:
                 color = c
         

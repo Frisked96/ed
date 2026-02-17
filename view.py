@@ -285,8 +285,8 @@ class Renderer:
                     try:
                         return pygame.Color(c)
                     except:
-                        return (255, 255, 255)
-                return COLOR_MAP.get(c.lower(), (255, 255, 255))
+                        return Colors.WHITE
+                return Colors.get(c.lower(), Colors.WHITE)
             return c
 
         if color_override is not None:

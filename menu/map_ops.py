@@ -50,23 +50,16 @@ class LoadMapState(State):
 
     def enter(self, **kwargs):
         def on_filename(filename):
-            print(f"DEBUG: LoadMapState received filename: {filename}")
             if filename:
                 if os.path.exists(filename):
                     from map_io import load_map_from_file
                     try:
                         m = load_map_from_file(filename)
                         if m:
-                            print(f"DEBUG: Successfully loaded map {m.width}x{m.height}")
                             self.manager.pop() # Pop LoadMapState
                             self.callback(m)
                             return
-                    except Exception as e:
-                        print(f"DEBUG: Error reading map file: {e}")
-                else:
-                    print(f"DEBUG: File does not exist: {filename}")
-            
-            print("DEBUG: LoadMapState failing, popping and calling callback(None)")
+                    except: pass
             self.manager.pop() # Pop LoadMapState even on failure
             self.callback(None)
 

@@ -162,26 +162,21 @@ class TextInputState(State):
     def handle_event(self, event):
         if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
             if event.ui_element == self.text_entry:
-                print(f"DEBUG: Text entry finished: {event.text}")
                 self.manager.pop()
                 self.callback(event.text)
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.ok_btn:
-                print(f"DEBUG: OK button pressed. Text: {self.text_entry.get_text()}")
                 self.manager.pop()
                 self.callback(self.text_entry.get_text())
             elif event.ui_element == self.cancel_btn:
-                print("DEBUG: Cancel button pressed.")
                 self.manager.pop()
                 self.callback(None)
         elif event.type == pygame_gui.UI_WINDOW_CLOSE:
             if event.ui_element == self.window:
-                print("DEBUG: Window closed in TextInputState")
                 self.manager.pop()
                 self.callback(None)
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                print("DEBUG: ESC pressed in TextInputState")
                 self.manager.pop()
                 self.callback(None)
 

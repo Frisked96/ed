@@ -51,6 +51,15 @@ class LoadMapState(State):
     def enter(self, **kwargs):
         def on_filename(filename):
             if filename:
+                # Add extension if missing
+                if not os.path.splitext(filename)[1]:
+                    if os.path.exists(filename + ".json"):
+                        filename += ".json"
+                    elif os.path.exists(filename + ".txt"):
+                        filename += ".txt"
+                    else:
+                        filename += ".json"
+
                 if os.path.exists(filename):
                     from map_io import load_map_from_file
                     try:
@@ -140,10 +149,16 @@ class ResizeMapState(FormState):
 def menu_save_map(manager, context, map_obj, filename=None):
     if filename:
         from map_io import autosave_map as io_save
+        if not os.path.splitext(filename)[1]:
+            filename += ".json"
         return io_save(map_obj, filename)
     
     def on_filename(fname):
         if fname:
+            # Auto-append .json if no extension
+            if not os.path.splitext(fname)[1]:
+                fname += ".json"
+
             from map_io import autosave_map as io_save
             io_save(map_obj, fname)
             map_obj.dirty = False

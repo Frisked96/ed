@@ -5,6 +5,10 @@ import numpy as np
 from tiles import REGISTRY
 from colors import Colors
 
+# Safety limits for map dimensions
+MAX_MAP_WIDTH = 1000
+MAX_MAP_HEIGHT = 1000
+
 def load_config():
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
     # Default bindings now use string names for all keys
@@ -148,15 +152,18 @@ def autosave_map(map_obj, filename):
 
 def save_map_json(map_obj, filename):
     data = {
-        "width": map_obj.width,
-        "height": map_obj.height,
+        "width": int(map_obj.width),
+        "height": int(map_obj.height),
         "layers": {}
     }
     for z, layer in map_obj.layers.items():
+        # Ensure it's converted to a list of lists (2D)
+        # tolist() usually handles this for 2D numpy arrays
         data["layers"][str(z)] = layer.tolist()
 
     with open(filename, 'w') as f:
-        json.dump(data, f)
+        # Use indent=4 for human readability and to prevent "single line" issues
+        json.dump(data, f, indent=4)
 
 def save_map_text_layers(map_obj, filename):
     with open(filename, 'w') as f:
@@ -189,15 +196,49 @@ def load_map_json(filename):
     with open(filename, 'r') as f:
         data = json.load(f)
 
-    w = data.get('width', 10)
-    h = data.get('height', 10)
+    # Validate dimensions
+    try:
+        w = int(data.get('width', 10))
+        h = int(data.get('height', 10))
+    except (ValueError, TypeError):
+        w, h = 10, 10
+
+    # Cap dimensions to prevent crashes/memory issues
+    w = max(1, min(w, MAX_MAP_WIDTH))
+    h = max(1, min(h, MAX_MAP_HEIGHT))
+
     from core import Map
     m = Map(w, h)
 
     layers = data.get('layers', {})
     for z_str, layer_data in layers.items():
-        z = int(z_str)
-        m.layers[z] = np.array(layer_data, dtype=np.uint16)
+        try:
+            z = int(z_str)
+            arr = np.array(layer_data, dtype=np.uint16)
+
+            # Robustness check: if array is 1D but map is 2D, try to reshape
+            if arr.ndim == 1:
+                if arr.size == w * h:
+                    arr = arr.reshape((h, w))
+                else:
+                    print(f"Warning: Layer {z} size {arr.size} does not match map dimensions {w}x{h}. Skipping or cropping.")
+                    # Fallback logic could go here, for now skipping invalid layer data
+                    continue
+
+            # Verify shape matches map dimensions
+            if arr.shape != (h, w):
+                 print(f"Warning: Layer {z} shape {arr.shape} does not match map dimensions {w}x{h}.")
+                 # Create a new blank layer and copy what fits
+                 new_layer = np.zeros((h, w), dtype=np.uint16)
+                 min_h = min(h, arr.shape[0])
+                 min_w = min(w, arr.shape[1])
+                 new_layer[:min_h, :min_w] = arr[:min_h, :min_w]
+                 arr = new_layer
+
+            m.layers[z] = arr
+        except Exception as e:
+            print(f"Error loading layer {z_str}: {e}")
+
     return m
 
 def load_map_text(filename):

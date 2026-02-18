@@ -1,5 +1,7 @@
+import os
 from statemachine import StateMachine, State
 import pygame
+from map_io import load_map_from_file
 
 class AppFlow(StateMachine):
     """
@@ -41,22 +43,29 @@ class AppFlow(StateMachine):
 
     def push_load_map_wizard(self, vw, vh, callback):
         from menu.base import TextInputState
-        import os
         from core import Map
         from tiles import REGISTRY
 
         def on_filename(filename):
             if filename:
+                # Auto-detect extension logic
+                base_name = filename
+                ext = os.path.splitext(filename)[1]
+
+                # If no extension, try likely candidates
+                if not ext:
+                    if os.path.exists(filename + ".json"):
+                        filename += ".json"
+                    elif os.path.exists(filename + ".txt"):
+                        filename += ".txt"
+                    else:
+                        # Default to .json if neither exists (will likely fail to load, but that's expected)
+                        filename += ".json"
+
                 if os.path.exists(filename):
                     try:
-                        with open(filename, "r") as f:
-                            lines = [line.rstrip("\n") for line in f]
-                        if lines:
-                            w = max(len(l) for l in lines); h = len(lines)
-                            m = Map(w, h)
-                            for y, line in enumerate(lines):
-                                for x, ch in enumerate(line):
-                                    m.set(x, y, REGISTRY.get_by_char(ch))
+                        m = load_map_from_file(filename)
+                        if m:
                             callback(m)
                             return
                     except Exception as e:

@@ -1,95 +1,94 @@
 [
   {
     "id": 201,
-    "char": "~",
-    "name": "Water Flow",
-    "color": "blue",
-    "bg_color": null,
-    "blocks_movement": false,
-    "blocks_sight": false,
-    "properties": {"liquid": true},
+    "char": "!",
+    "name": "Neon Sign (Pink)",
+    "color": "#FF00FF",
     "animation": {
       "mode": "flow",
-      "flow_colors": ["#0000AA", "#0000FF", "#4444FF", "#0000FF", "#0000AA"],
-      "flow_speed": 1.5,
-      "flow_direction": "diagonal"
+      "flow_colors": ["#FF00FF", "#880088", "#FF00FF", "#FFFFFF", "#FF00FF"],
+      "flow_speed": 2.0,
+      "flow_direction": "horizontal"
     }
   },
   {
     "id": 202,
-    "char": "~",
-    "name": "Lava Flow",
-    "color": "red",
-    "bg_color": null,
-    "blocks_movement": false,
-    "blocks_sight": false,
-    "properties": {"liquid": true, "damage": 10},
+    "char": "?",
+    "name": "Neon Sign (Cyan)",
+    "color": "#00FFFF",
     "animation": {
       "mode": "flow",
-      "flow_colors": ["#AA0000", "#FF0000", "#FF8800", "#FFFF00", "#FF8800", "#FF0000", "#AA0000"],
-      "flow_speed": 1.0,
-      "flow_direction": "diagonal"
+      "flow_colors": ["#00FFFF", "#008888", "#00FFFF", "#FFFFFF", "#00FFFF"],
+      "flow_speed": 1.5,
+      "flow_direction": "vertical"
     }
   },
   {
     "id": 203,
     "char": "═",
-    "name": "Lightning (H)",
-    "color": "yellow",
-    "bg_color": null,
-    "blocks_movement": false,
-    "blocks_sight": false,
-    "properties": {},
+    "name": "Skycar Traffic (H)",
+    "color": "#FFFFFF",
     "animation": {
       "mode": "flow",
-      "flow_colors": ["#888800", "#FFFF00", "#FFFFFF", "#FFFF00", "#888800"],
-      "flow_speed": 5.0,
+      "flow_colors": ["#FFFFFF", "#00FFFF", "#0000FF", "#00FFFF", "#FFFFFF"],
+      "flow_speed": 4.0,
       "flow_direction": "horizontal"
     }
   },
   {
     "id": 204,
     "char": "║",
-    "name": "Lightning (V)",
-    "color": "yellow",
-    "bg_color": null,
-    "blocks_movement": false,
-    "blocks_sight": false,
-    "properties": {},
+    "name": "Skycar Traffic (V)",
+    "color": "#FFFFFF",
     "animation": {
       "mode": "flow",
-      "flow_colors": ["#888800", "#FFFF00", "#FFFFFF", "#FFFF00", "#888800"],
-      "flow_speed": 5.0,
+      "flow_colors": ["#FFFFFF", "#00FFFF", "#0000FF", "#00FFFF", "#FFFFFF"],
+      "flow_speed": 4.0,
       "flow_direction": "vertical"
     }
   },
   {
     "id": 205,
-    "char": "#",
-    "name": "Pulsing Wall",
-    "color": "magenta",
-    "bg_color": null,
-    "blocks_movement": true,
-    "blocks_sight": true,
-    "properties": {},
+    "char": "≈",
+    "name": "Plasma Conduit",
+    "color": "#AA00FF",
     "animation": {
-      "mode": "sequence",
-      "frames": ["#", "▓", "▒", "░", "▒", "▓"],
-      "frame_duration": 0.15
+      "mode": "flow",
+      "flow_colors": ["#440088", "#AA00FF", "#CC88FF", "#AA00FF", "#440088"],
+      "flow_speed": 3.0,
+      "flow_direction": "diagonal"
     }
   },
   {
     "id": 206,
-    "char": "w",
-    "name": "Fire",
-    "color": "red",
-    "bg_color": null,
-    "blocks_movement": false,
-    "blocks_sight": false,
-    "properties": {},
+    "char": "*",
+    "name": "Vent Steam",
+    "color": "#AAAAAA",
     "animation": {
       "mode": "sequence",
-      "frames": ["w", "W", "M"],
+      "frames": ["*", "+", ".", " "],
+      "frame_duration": 0.2
+    }
+  },
+  {
+    "id": 207,
+    "char": "$",
+    "name": "Data Terminal",
+    "color": "#00FF00",
+    "animation": {
+      "mode": "sequence",
+      "frames": ["_", "█", "_", " "],
+      "frame_duration": 0.4
+    }
+  },
+  {
+    "id": 208,
+    "char": "§",
+    "name": "Hologram Ad",
+    "color": "#00AAFF",
+    "animation": {
+      "mode": "sequence",
+      "frames": ["§", " ", "§", "Ø", "§"],
       "frame_duration": 0.1
     }
   }

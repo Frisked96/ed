@@ -172,7 +172,6 @@ class Renderer:
             return s
 
         # Diagonals
-
         if char == '╱':
             pygame.draw.line(s, color, (0, ts), (ts, 0), sw)
             return s
@@ -183,8 +182,22 @@ class Renderer:
             pygame.draw.line(s, color, (0, 0), (ts, ts), sw)
             pygame.draw.line(s, color, (0, ts), (ts, 0), sw)
             return s
-
-        # Draw box lines
+            
+        # Keyboard / Terminal (Procedural)
+        if char == '⌨':
+            # Draw casing
+            pygame.draw.rect(s, color, (int(ts*0.1), int(ts*0.4), int(ts*0.8), int(ts*0.45)), sw)
+            # Keys
+            step = max(1, int(ts*0.15))
+            for ky in range(int(ts*0.5), int(ts*0.8), step):
+                for kx in range(int(ts*0.2), int(ts*0.8), step):
+                    pygame.draw.rect(s, color, (kx, ky, max(1, sw), max(1, sw)))
+            # Spacebar
+            pygame.draw.rect(s, color, (int(ts*0.35), int(ts*0.75), int(ts*0.3), max(1, sw//2)))
+            return s
+        
+                # Draw box lines
+        
         dirs = BOX_DRAWING_CHARS.get(char)
         if not dirs:
             return None
@@ -286,8 +299,8 @@ class Renderer:
         else:
              color = parse_color(tile_def.color)
 
-        # Try procedural rendering first for box/block/shade chars
-        if char in BOX_DRAWING_CHARS or '\u2500' <= char <= '\u259f' or char in ('█', '░', '▒', '▓', '▔', '▕'):
+        # Try procedural rendering first for box/block/shade/special chars
+        if char in BOX_DRAWING_CHARS or '\u2500' <= char <= '\u259f' or char in ('█', '░', '▒', '▓', '▔', '▕', '⌨'):
             box_surf = self._render_box_char(char, color, bg_color)
             if box_surf:
                 # Only cache static glyphs

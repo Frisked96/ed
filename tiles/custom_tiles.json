@@ -2569,5 +2569,20 @@
     "blocks_sight": false,
     "properties": {},
     "animation": null
+  },
+  {
+    "id": 172,
+    "char": " ",
+    "name": "EMPTY SPACE",
+    "color": [
+      180,
+      180,
+      180
+    ],
+    "bg_color": null,
+    "blocks_movement": false,
+    "blocks_sight": false,
+    "properties": {},
+    "animation": null
   }
 ]

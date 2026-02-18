@@ -72,12 +72,12 @@
   },
   {
     "id": 207,
-    "char": "_",
+    "char": "⌨",
     "name": "Data Terminal",
     "color": "#00FF00",
     "animation": {
       "mode": "sequence",
-      "frames": ["_", " "],
+      "frames": ["⌨", " "],
       "frame_duration": 0.5
     }
   },
@@ -90,6 +90,98 @@
       "mode": "sequence",
       "frames": ["§", " ", "§", "Ø", "§"],
       "frame_duration": 0.1
+    }
+  },
+  {
+    "id": 209,
+    "char": "|",
+    "name": "Security Laser (V)",
+    "color": "#FF0000",
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#FF0000", "#FF8888", "#FF0000", "#440000"],
+      "flow_speed": 5.0,
+      "flow_direction": "vertical"
+    }
+  },
+  {
+    "id": 210,
+    "char": "¤",
+    "name": "Fusion Core",
+    "color": "#FFFF00",
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#FFFF00", "#FFFFFF", "#00FFFF", "#FFFFFF", "#FFFF00"],
+      "flow_speed": 1.5,
+      "flow_direction": "diagonal"
+    }
+  },
+  {
+    "id": 211,
+    "char": "*",
+    "name": "Emergency Beacon",
+    "color": "#FF0000",
+    "animation": {
+      "mode": "sequence",
+      "frames": ["*", "+", " "],
+      "frame_duration": 0.3
+    }
+  },
+  {
+    "id": 212,
+    "char": "o",
+    "name": "Toxic Bubbles",
+    "color": "#00FF00",
+    "animation": {
+      "mode": "sequence",
+      "frames": [".", "o", "0", "O", "0", "o"],
+      "frame_duration": 0.15
+    }
+  },
+  {
+    "id": 213,
+    "char": ">",
+    "name": "Moving Walkway (R)",
+    "color": "#666666",
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#444444", "#888888", "#FFFFFF", "#888888", "#444444"],
+      "flow_speed": 3.0,
+      "flow_direction": "horizontal"
+    }
+  },
+  {
+    "id": 214,
+    "char": "!",
+    "name": "Hazard Alert",
+    "color": "#FFCC00",
+    "animation": {
+      "mode": "sequence",
+      "frames": ["!", " ", "!", " "],
+      "frame_duration": 0.5
+    }
+  },
+  {
+    "id": 215,
+    "char": "'",
+    "name": "Acid Rain",
+    "color": "#CCFF00",
+    "animation": {
+      "mode": "flow",
+      "flow_colors": ["#CCFF00", "#88AA00", "#445500", "#88AA00"],
+      "flow_speed": 6.0,
+      "flow_direction": "vertical"
+    }
+  },
+  {
+    "id": 216,
+    "char": "◙",
+    "name": "Surveillance Cam",
+    "color": "#AAAAAA",
+    "animation": {
+      "mode": "sequence",
+      "frames": ["◙", "◚", "◛"],
+      "frame_duration": 0.8
     }
   }
 ]

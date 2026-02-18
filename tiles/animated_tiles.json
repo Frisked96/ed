@@ -61,24 +61,24 @@
   },
   {
     "id": 206,
-    "char": "*",
+    "char": "░",
     "name": "Vent Steam",
     "color": "#AAAAAA",
     "animation": {
       "mode": "sequence",
-      "frames": ["*", "+", ".", " "],
+      "frames": ["░", "▒", "▓", "▒"],
       "frame_duration": 0.2
     }
   },
   {
     "id": 207,
-    "char": "$",
+    "char": "_",
     "name": "Data Terminal",
     "color": "#00FF00",
     "animation": {
       "mode": "sequence",
-      "frames": ["_", "█", "_", " "],
-      "frame_duration": 0.4
+      "frames": ["_", " "],
+      "frame_duration": 0.5
     }
   },
   {

@@ -101,9 +101,6 @@ class Renderer:
 
         # Draw partial blocks (U+2580 - U+259F)
         if '\u2580' <= char <= '\u259f':
-            # Block elements range: 2580-259F
-            # We already handle █ (2588)
-            
             # Helper for block rendering
             def draw_block(x_fracs, y_fracs):
                 # x_fracs/y_fracs are (start, end) where 0.0 is top/left and 1.0 is bottom/right
@@ -155,32 +152,27 @@ class Renderer:
             elif char == '▟':
                 draw_block((0.5, 1), (0, 1))
                 draw_block((0, 0.5), (0.5, 1))
+            # Shades (2591 - 2593)
+            elif char in ('░', '▒', '▓'):
+                s.fill(bg_color if bg_color else (0, 0, 0, 0))
+                for y in range(ts):
+                    for x in range(ts):
+                        if char == '▒': # Medium shade - checkerboard
+                            if (x + y) % 2 == 0:
+                                s.set_at((x, y), color)
+                        elif char == '░': # Light shade - 1/4 pixels
+                            if x % 2 == 0 and y % 2 == 0:
+                                s.set_at((x, y), color)
+                        elif char == '▓': # Dark shade - 3/4 pixels
+                            if not (x % 2 == 1 and y % 2 == 1):
+                                s.set_at((x, y), color)
+            else:
+                return None
             
             return s
 
-        # Draw shades
-        if char in ('░', '▒', '▓'):
-            s.fill(bg_color if bg_color else (0, 0, 0, 0))
-            # Determine density
-            if char == '░': density = 0.25
-            elif char == '▒': density = 0.5
-            else: density = 0.75
-            
-            # Draw a stipple pattern that fills the tile
-            for y in range(ts):
-                for x in range(ts):
-                    if char == '▒': # Medium shade - checkerboard
-                        if (x + y) % 2 == 0:
-                            s.set_at((x, y), color)
-                    elif char == '░': # Light shade - 1/4 pixels
-                        if x % 2 == 0 and y % 2 == 0:
-                            s.set_at((x, y), color)
-                    elif char == '▓': # Dark shade - 3/4 pixels
-                        if not (x % 2 == 1 and y % 2 == 1):
-                            s.set_at((x, y), color)
-            return s
-            
         # Diagonals
+
         if char == '╱':
             pygame.draw.line(s, color, (0, ts), (ts, 0), sw)
             return s

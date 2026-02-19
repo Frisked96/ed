@@ -246,9 +246,9 @@ class CAGenState(BaseGenConfigState):
         self._prompt_num("Death Limit:", lambda x: setattr(self, 'death', x))
 
     def _prompt_num(self, prompt, setter):
-        def on_val(v):
-            if v and v.isdigit(): setter(int(v))
-        self.manager.push(FormState(self.manager, self.context, prompt, [["Value", "", "val"]], lambda r: on_val(r['val'])))
+        def on_val(r):
+            if r and r['val'].isdigit(): setter(int(r['val']))
+        self.manager.push(FormState(self.manager, self.context, prompt, [["Value", "", "val"]], on_val))
 
     def _pick_wall(self):
         self.manager.push(TilePickerState(self.manager, self.context, lambda t: setattr(self, 'wall_tile', t)))
@@ -320,13 +320,13 @@ class BSPGenState(BaseGenConfigState):
     def __init__(self, manager, context, session):
         super().__init__(manager, context, session, "BSP PARTITION CONFIG")
         t = REGISTRY.get_by_char('#')
-        self.street_tile = t.id if t else 1
+        self.street_tile = t if t else 1
         self.min_block_size = 5
         self.iterations = 4
         self.two_lanes = False
         self.has_median = False
         t2 = REGISTRY.get_by_char('+')
-        self.median_tile = t2.id if t2 else 1
+        self.median_tile = t2 if t2 else 1
 
         self._rebuild_options()
 
@@ -349,14 +349,14 @@ class BSPGenState(BaseGenConfigState):
             self.manager.push(TilePickerState(self.manager, self.context, lambda t: setattr(self, 'median_tile', t)))
 
     def _input_size(self):
-        def on_val(v):
-            if v and v.isdigit(): self.min_block_size = max(3, int(v))
-        self.manager.push(FormState(self.manager, self.context, "Min Block Size", [["Value", str(self.min_block_size), "val"]], lambda r: on_val(r['val'])))
+        def on_val(r):
+            if r and r['val'].isdigit(): self.min_block_size = max(3, int(r['val']))
+        self.manager.push(FormState(self.manager, self.context, "Min Block Size", [["Value", str(self.min_block_size), "val"]], on_val))
 
     def _input_iters(self):
-        def on_val(v):
-            if v and v.isdigit(): self.iterations = max(1, min(10, int(v)))
-        self.manager.push(FormState(self.manager, self.context, "Iterations", [["Value", str(self.iterations), "val"]], lambda r: on_val(r['val'])))
+        def on_val(r):
+            if r and r['val'].isdigit(): self.iterations = max(1, min(10, int(r['val'])))
+        self.manager.push(FormState(self.manager, self.context, "Iterations", [["Value", str(self.iterations), "val"]], on_val))
 
     def _toggle_two_lanes(self):
         self.two_lanes = not self.two_lanes

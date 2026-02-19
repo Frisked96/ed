@@ -6,9 +6,10 @@ from .utils import check_autosave
 def handle_generation(session, manager, action=None):
     session.map_obj.push_undo()
     success = False
-    if action == 'random_gen': success = menu_random_generation(manager, session.map_obj, session.tool_state.seed)
-    elif action == 'perlin_noise': success = menu_perlin_generation(manager, session.map_obj, session.tool_state.seed)
-    elif action == 'voronoi': success = menu_voronoi_generation(manager, session.map_obj, session.tool_state.seed)
+    z = session.active_z_level
+    if action == 'random_gen': success = menu_random_generation(manager, session.map_obj, session.tool_state.seed, z=z)
+    elif action == 'perlin_noise': success = menu_perlin_generation(manager, session.map_obj, session.tool_state.seed, z=z)
+    elif action == 'voronoi': success = menu_voronoi_generation(manager, session.map_obj, session.tool_state.seed, z=z)
     if success:
         session.tool_state.edits_since_save += 1
         check_autosave(session, manager)

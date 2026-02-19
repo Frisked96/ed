@@ -1,7 +1,8 @@
 from tiles import REGISTRY
 from generation import (
     cellular_automata_cave, perlin_noise_generation, voronoi_generation,
-    apply_cellular_automata_region, apply_weighted_noise_region, apply_shuffle_region
+    apply_cellular_automata_region, apply_weighted_noise_region, apply_shuffle_region,
+    bsp_generation
 )
 from menu.base import FormState, MessageState, State, MenuState
 from menu.pickers import TilePickerState, MultiTilePickerState
@@ -12,7 +13,7 @@ from core import EditorSession
 
 # --- Simple Menu Helpers (unchanged) ---
 
-def menu_random_generation(context, map_obj, seed=None):
+def menu_random_generation(context, map_obj, seed=None, z=0):
     fields = [
         ["Seed", str(seed) if seed is not None else "random", "seed"],
         ["Iterations (3-10)", "5", "iters"],
@@ -28,7 +29,7 @@ def menu_random_generation(context, map_obj, seed=None):
             wall_id = REGISTRY.get_by_char(res["wall"][0])
             floor_id = REGISTRY.get_by_char(res["floor"][0])
 
-            final_seed = cellular_automata_cave(map_obj, iterations, wall_id, floor_id, gen_seed)
+            final_seed = cellular_automata_cave(map_obj, iterations, wall_id, floor_id, gen_seed, z=z)
             if gen_seed is None:
                 context.manager.push(MessageState(context.manager, context, f"Generated with seed: {final_seed}"))
             context.invalidate_cache()
@@ -38,7 +39,7 @@ def menu_random_generation(context, map_obj, seed=None):
     context.manager.push(FormState(context.manager, context, "CAVE GENERATION SETTINGS", fields, on_submit))
     return True
 
-def menu_perlin_generation(context, map_obj, seed=None):
+def menu_perlin_generation(context, map_obj, seed=None, z=0):
     fields = [
         ["Seed", str(seed) if seed is not None else "random", "seed"],
         ["Scale", "10.0", "scale"],
@@ -55,7 +56,7 @@ def menu_perlin_generation(context, map_obj, seed=None):
             persistence = float(res["persistence"])
             tile_ids = [t.id for t in REGISTRY.get_all()]
 
-            final_seed = perlin_noise_generation(map_obj, tile_ids, scale, octaves, persistence, gen_seed)
+            final_seed = perlin_noise_generation(map_obj, tile_ids, scale, octaves, persistence, gen_seed, z=z)
             if gen_seed is None:
                 context.manager.push(MessageState(context.manager, context, f"Generated with seed: {final_seed}"))
             context.invalidate_cache()
@@ -65,7 +66,7 @@ def menu_perlin_generation(context, map_obj, seed=None):
     context.manager.push(FormState(context.manager, context, "PERLIN NOISE SETTINGS", fields, on_submit))
     return True
 
-def menu_voronoi_generation(context, map_obj, seed=None):
+def menu_voronoi_generation(context, map_obj, seed=None, z=0):
     fields = [
         ["Seed", str(seed) if seed is not None else "random", "seed"],
         ["Points", "20", "points"]
@@ -78,7 +79,7 @@ def menu_voronoi_generation(context, map_obj, seed=None):
             num_points = int(res["points"])
             tile_ids = [t.id for t in REGISTRY.get_all()]
 
-            final_seed = voronoi_generation(map_obj, tile_ids, num_points, gen_seed)
+            final_seed = voronoi_generation(map_obj, tile_ids, num_points, gen_seed, z=z)
             if gen_seed is None:
                 context.manager.push(MessageState(context.manager, context, f"Generated with seed: {final_seed}"))
             context.invalidate_cache()
@@ -97,6 +98,7 @@ class AdvancedGenerationState(MenuState):
             ("Cellular Automata", self._open_ca),
             ("Weighted Noise", self._open_noise),
             ("Shuffle Selection", self._open_shuffle),
+            ("BSP Partition", self._open_bsp),
         ]
         super().__init__(manager, context, "ADVANCED GENERATION", options)
         self.session = session
@@ -109,6 +111,9 @@ class AdvancedGenerationState(MenuState):
 
     def _open_shuffle(self):
         self.manager.push(ShuffleGenState(self.manager, self.context, self.session))
+
+    def _open_bsp(self):
+        self.manager.push(BSPGenState(self.manager, self.context, self.session))
 
 class BaseGenConfigState(State):
     def __init__(self, manager, context, session, title):
@@ -267,7 +272,8 @@ class CAGenState(BaseGenConfigState):
             self.iterations,
             self.birth,
             self.death,
-            self.mode
+            self.mode,
+            z=self.session.active_z_level
         )
         self.context.invalidate_cache()
         self.session.tool_state.edits_since_save += 1
@@ -304,7 +310,75 @@ class NoiseGenState(BaseGenConfigState):
     def _apply(self):
         x_range, y_range = self._get_selection_range()
         weights = {self.primary_tile: self.weight, self.bg_tile: 100 - self.weight}
-        apply_weighted_noise_region(self.session.map_obj, x_range, y_range, weights)
+        apply_weighted_noise_region(self.session.map_obj, x_range, y_range, weights, z=self.session.active_z_level)
+        self.context.invalidate_cache()
+        self.session.tool_state.edits_since_save += 1
+        self.manager.pop()
+        self.manager.pop()
+
+class BSPGenState(BaseGenConfigState):
+    def __init__(self, manager, context, session):
+        super().__init__(manager, context, session, "BSP PARTITION CONFIG")
+        t = REGISTRY.get_by_char('#')
+        self.street_tile = t.id if t else 1
+        self.min_block_size = 5
+        self.iterations = 4
+        self.two_lanes = False
+        self.has_median = False
+        t2 = REGISTRY.get_by_char('+')
+        self.median_tile = t2.id if t2 else 1
+
+        self._rebuild_options()
+
+    def _rebuild_options(self):
+        self.options = [
+            ("Street Tile", lambda: self._get_tile_label(self.street_tile), self._pick_street),
+            ("Min Block Size", lambda: str(self.min_block_size), self._input_size),
+            ("Iterations", lambda: str(self.iterations), self._input_iters),
+            ("Two Lanes", lambda: "YES" if self.two_lanes else "NO", self._toggle_two_lanes),
+            ("Has Median", lambda: "YES" if self.has_median else "NO", self._toggle_median),
+            ("Median Tile", lambda: self._get_tile_label(self.median_tile) if self.has_median else "---", self._pick_median),
+            ("APPLY", lambda: "", self._apply)
+        ]
+
+    def _pick_street(self):
+        self.manager.push(TilePickerState(self.manager, self.context, lambda t: setattr(self, 'street_tile', t)))
+
+    def _pick_median(self):
+        if self.has_median:
+            self.manager.push(TilePickerState(self.manager, self.context, lambda t: setattr(self, 'median_tile', t)))
+
+    def _input_size(self):
+        def on_val(v):
+            if v and v.isdigit(): self.min_block_size = max(3, int(v))
+        self.manager.push(FormState(self.manager, self.context, "Min Block Size", [["Value", str(self.min_block_size), "val"]], lambda r: on_val(r['val'])))
+
+    def _input_iters(self):
+        def on_val(v):
+            if v and v.isdigit(): self.iterations = max(1, min(10, int(v)))
+        self.manager.push(FormState(self.manager, self.context, "Iterations", [["Value", str(self.iterations), "val"]], lambda r: on_val(r['val'])))
+
+    def _toggle_two_lanes(self):
+        self.two_lanes = not self.two_lanes
+        if not self.two_lanes: self.has_median = False
+
+    def _toggle_median(self):
+        if self.two_lanes:
+            self.has_median = not self.has_median
+
+    def _apply(self):
+        x_range, y_range = self._get_selection_range()
+        bsp_generation(
+            self.session.map_obj,
+            x_range, y_range,
+            self.street_tile,
+            self.min_block_size,
+            self.iterations,
+            self.two_lanes,
+            self.has_median,
+            self.median_tile,
+            z=self.session.active_z_level
+        )
         self.context.invalidate_cache()
         self.session.tool_state.edits_since_save += 1
         self.manager.pop()
@@ -329,7 +403,7 @@ class ShuffleGenState(BaseGenConfigState):
 
     def _apply(self):
         x_range, y_range = self._get_selection_range()
-        apply_shuffle_region(self.session.map_obj, x_range, y_range, list(self.target_tiles))
+        apply_shuffle_region(self.session.map_obj, x_range, y_range, list(self.target_tiles), z=self.session.active_z_level)
         self.context.invalidate_cache()
         self.session.tool_state.edits_since_save += 1
         self.manager.pop()

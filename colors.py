@@ -28,7 +28,7 @@ class Colors:
         colors_path = os.path.join(os.getcwd(), 'colors.json')
         if os.path.exists(colors_path):
             try:
-                with open(colors_path, 'r') as f:
+                with open(colors_path, 'r', encoding='utf-8') as f:
                     loaded = json.load(f)
                     for name, val in loaded.items():
                         cls._colors[name.lower()] = tuple(val)

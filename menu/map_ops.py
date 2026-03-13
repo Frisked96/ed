@@ -100,7 +100,7 @@ class ExportMapState(State):
                 self.manager.push(TextInputState(self.manager, self.context, "Tile size (default 8): ", on_ts))
             elif filename.endswith('.csv'):
                 try:
-                    with open(filename, 'w') as f:
+                    with open(filename, 'w', encoding='utf-8') as f:
                         for row in self.map_obj.data:
                             f.write(','.join(map(str, row)) + '\n')
                 except Exception as e: print(e)

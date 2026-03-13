@@ -52,7 +52,7 @@ def load_config():
 
     if os.path.exists(config_path):
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 loaded = json.load(f)
                 default_bindings.update(loaded)
         except Exception as e: 
@@ -64,7 +64,7 @@ def save_config(bindings):
     config_path = os.path.join(os.getcwd(), 'map_editor_config.json')
     # Save config with string keys
     try:
-        with open(config_path, 'w') as f:
+        with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(bindings, f, indent=2)
     except: pass
 
@@ -75,7 +75,7 @@ def load_tiles():
     anim_path = os.path.join(os.getcwd(), 'tiles', 'animated_tiles.json')
     if os.path.exists(anim_path):
         try:
-            with open(anim_path, 'r') as f:
+            with open(anim_path, 'r', encoding='utf-8') as f:
                 anim_tiles = json.load(f)
                 custom_tiles.extend(anim_tiles)
         except:
@@ -85,10 +85,11 @@ def load_tiles():
     tiles_path = os.path.join(os.getcwd(), 'tiles', 'custom_tiles.json')
     if os.path.exists(tiles_path):
         try:
-            with open(tiles_path, 'r') as f:
+            with open(tiles_path, 'r', encoding='utf-8') as f:
                 user_tiles = json.load(f)
                 custom_tiles.extend(user_tiles)
-        except:
+        except Exception as e:
+            print(f"Error loading tiles: {e}")
             pass
 
     return custom_tiles
@@ -109,8 +110,8 @@ def save_tiles(tile_definitions):
 
     try:
         # tile_definitions should be a list of dicts from TileDefinition.dict()
-        with open(tiles_path, 'w') as f:
-            json.dump(tile_definitions, f, indent=2)
+        with open(tiles_path, 'w', encoding='utf-8') as f:
+            json.dump(tile_definitions, f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"Error saving tiles: {e}")
 
@@ -161,12 +162,12 @@ def save_map_json(map_obj, filename):
         # tolist() usually handles this for 2D numpy arrays
         data["layers"][str(z)] = layer.tolist()
 
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         # Use indent=4 for human readability and to prevent "single line" issues
         json.dump(data, f, indent=4)
 
 def save_map_text_layers(map_obj, filename):
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         sorted_z = sorted(map_obj.layers.keys())
         # If only layer 0 and no others, use legacy format (no header)
         if len(sorted_z) == 1 and sorted_z[0] == 0:
@@ -193,7 +194,7 @@ def load_map_from_file(filename):
     return load_map_text(filename)
 
 def load_map_json(filename):
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     # Validate dimensions
@@ -242,7 +243,7 @@ def load_map_json(filename):
     return m
 
 def load_map_text(filename):
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         lines = [line.rstrip('\n') for line in f]
 
     import re
@@ -297,7 +298,7 @@ def load_map_text(filename):
 def save_macros(macros):
     path = os.path.join(os.getcwd(), 'macros.json')
     try:
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             json.dump(macros, f, indent=2)
     except: pass
 
@@ -306,7 +307,7 @@ def load_macros():
     if not os.path.exists(path):
         return {}
     try:
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {}
